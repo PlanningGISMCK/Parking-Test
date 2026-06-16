@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>McKinney Parking Survey</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink:#14211c; --paper:#f6f4ec; --panel:#fff; --line:#d9d4c4;
+    --brass:#9a6a2f; --brass-deep:#6e4a1d; --signal:#1f6f54;
+    --signal-dim:#3f8a6f; --alert:#a8401f; --muted:#6b6657;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; }
+  body {
+    font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    background:var(--paper); color:var(--ink);
+    -webkit-text-size-adjust:100%;
+  }
+  .shell { max-width:1000px; margin:0 auto; padding:22px 22px 60px; min-height:100vh; }
+  .header {
+    display:flex; justify-content:space-between; align-items:flex-end;
+    padding-bottom:18px; border-bottom:2px solid var(--ink); margin-bottom:20px;
+  }
+  .eyebrow {
+    font-size:11px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--brass-deep); font-weight:600; margin-bottom:4px;
+  }
+  h1.title { font-family:'Fraunces',Georgia,serif; font-size:34px; line-height:1; margin:0; font-weight:600; letter-spacing:-.01em; }
+  .counter { text-align:right; line-height:1; }
+  .counter-num { display:block; font-family:'Fraunces',Georgia,serif; font-size:30px; font-weight:600; color:var(--signal); }
+  .counter-label { font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .grid { display:grid; grid-template-columns:1.15fr 1fr; gap:16px; margin-bottom:16px; }
+  .map-card { position:relative; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:8px; }
+  #map { height:360px; width:100%; border-radius:10px; background:#e8e6dc; }
+  .leaflet-container { font-family:inherit; border-radius:10px; }
+  .loc-btn {
+    position:absolute; bottom:18px; left:18px; z-index:500;
+    background:var(--ink); color:var(--paper); border:none; border-radius:8px;
+    padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer;
+    box-shadow:0 2px 10px rgba(0,0,0,.2);
+  }
+  .loc-btn:disabled { opacity:.6; cursor:default; }
+  .form-card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; display:flex; flex-direction:column; }
+  .field-label { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:600; margin-bottom:8px; }
+  .cap-hint { color:var(--brass); letter-spacing:.04em; }
+  .lot-list { display:flex; flex-direction:column; gap:6px; margin-bottom:18px; }
+  .lot-chip {
+    display:flex; justify-content:space-between; align-items:center; text-align:left;
+    background:var(--paper); border:1px solid var(--line); border-radius:8px;
+    padding:11px 13px; cursor:pointer; transition:all .12s ease; width:100%;
+    font-family:inherit; color:inherit;
+  }
+  .lot-chip.active { background:var(--signal); border-color:var(--signal); box-shadow:0 2px 8px rgba(31,111,84,.25); color:#fff; }
+  .lot-chip.active .lot-cap { color:rgba(255,255,255,.8); }
+  .lot-name { font-size:14px; font-weight:600; }
+  .lot-cap { font-size:12px; color:var(--muted); }
+  .num-input {
+    font-family:'Fraunces',Georgia,serif; font-size:40px; font-weight:600;
+    padding:8px 14px; border:1px solid var(--line); border-radius:8px; width:100%;
+    color:var(--ink); background:var(--paper); margin-bottom:16px; outline:none;
+  }
+  .num-input::-webkit-outer-spin-button,
+  .num-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+  .num-input { -moz-appearance:textfield; }
+  .time-row {
+    display:flex; justify-content:space-between; align-items:baseline;
+    padding:10px 0; border-top:1px dashed var(--line); border-bottom:1px dashed var(--line); margin-bottom:16px;
+  }
+  .time-label { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .time-value { font-size:14px; font-weight:600; }
+  .time-auto { font-size:11px; font-weight:400; color:var(--muted); }
+  .submit-btn {
+    background:var(--brass); color:#fff; border:none; border-radius:8px; padding:15px;
+    font-size:15px; font-weight:700; letter-spacing:.02em; cursor:pointer; margin-top:auto;
+    font-family:inherit;
+  }
+  .log-card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; }
+  .log-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  h2.log-title { font-family:'Fraunces',Georgia,serif; font-size:20px; margin:0; font-weight:600; }
+  .export-btn {
+    background:transparent; color:var(--brass-deep); border:1.5px solid var(--brass);
+    border-radius:7px; padding:8px 13px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+  }
+  .empty {
+    padding:26px 14px; text-align:center; color:var(--muted); font-size:14px;
+    background:var(--paper); border-radius:8px; border:1px dashed var(--line);
+  }
+  .log-row { position:relative; padding:12px 4px 14px; }
+  .log-bar-track { position:absolute; left:0; bottom:0; height:3px; width:100%; background:var(--line); border-radius:2px; }
+  .log-bar-fill { height:100%; border-radius:2px; transition:width .3s ease; }
+  .log-lot { font-size:14px; font-weight:600; }
+  .log-time { font-size:12px; color:var(--muted); }
+  .log-figures { position:absolute; right:4px; top:10px; display:flex; align-items:center; gap:12px; }
+  .log-count { font-family:'Fraunces',Georgia,serif; font-size:20px; font-weight:600; }
+  .log-cap { font-size:14px; color:var(--muted); font-weight:400; }
+  .log-pct { font-size:14px; font-weight:700; min-width:40px; text-align:right; }
+  .del-btn { background:transparent; border:none; color:var(--muted); font-size:22px; line-height:1; cursor:pointer; padding:0 2px; }
+  .footnote { margin-top:14px; padding-top:12px; border-top:1px solid var(--line); font-size:12px; color:var(--muted); }
+  .toast {
+    position:fixed; bottom:22px; left:50%; transform:translateX(-50%); color:#fff;
+    padding:12px 20px; border-radius:9px; font-size:14px; font-weight:600;
+    box-shadow:0 6px 24px rgba(0,0,0,.25); z-index:1000; max-width:90%; text-align:center;
+    opacity:0; pointer-events:none; transition:opacity .2s ease;
+  }
+  .toast.show { opacity:1; }
+  @media (max-width:820px) { .grid { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="header">
+    <div>
+      <div class="eyebrow">City of McKinney · Field Survey</div>
+      <h1 class="title">Parking Occupancy</h1>
+    </div>
+    <div class="counter">
+      <span class="counter-num" id="todayCount">0</span>
+      <span class="counter-label">logged today</span>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="map-card">
+      <div id="map"></div>
+      <button class="loc-btn" id="locBtn">◎ Use my location</button>
+    </section>
+
+    <section class="form-card">
+      <label class="field-label">Lot</label>
+      <div class="lot-list" id="lotList"></div>
+
+      <label class="field-label">Spots filled<span class="cap-hint" id="capHint"></span></label>
+      <input type="number" inputmode="numeric" min="0" class="num-input" id="spotsInput" placeholder="0" />
+
+      <div class="time-row">
+        <span class="time-label">Time of day</span>
+        <span class="time-value"><span id="liveTime"></span><span class="time-auto"> · auto-stamped on submit</span></span>
+      </div>
+
+      <button class="submit-btn" id="submitBtn">Log this count</button>
+    </section>
+  </div>
+
+  <section class="log-card">
+    <div class="log-head">
+      <h2 class="log-title">Today's counts</h2>
+      <button class="export-btn" id="exportBtn">↓ Export CSV</button>
+    </div>
+    <div id="logArea"></div>
+    <div class="footnote">Counts are stored on this iPad only. Export to CSV to keep a durable copy.</div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Sample McKinney, TX parking lots ──────────────────────────────
+// Replace these with your real lots. Each needs: id, name, capacity, lat, lng.
+const LOTS = [
+  { id:"lot-a", name:"Downtown Square — East",  capacity:60,  lat:33.197,  lng:-96.6155 },
+  { id:"lot-b", name:"Downtown Square — West",  capacity:45,  lat:33.1975, lng:-96.617  },
+  { id:"lot-c", name:"Chestnut St Garage",      capacity:220, lat:33.1962, lng:-96.6138 },
+  { id:"lot-d", name:"Tennessee St Lot",        capacity:80,  lat:33.1988, lng:-96.6147 },
+  { id:"lot-e", name:"City Hall Visitor Lot",   capacity:35,  lat:33.1955, lng:-96.6172 },
+];
+const CENTER = [33.1972, -96.6153];
+const STORAGE_KEY = "mckinney_parking_surveys_v1";
+const C = { ink:"#14211c", paper:"#f6f4ec", brass:"#9a6a2f", signal:"#1f6f54", signalDim:"#3f8a6f", alert:"#a8401f" };
+
+let selectedLot = null;
+let surveys = load();
+let myLocation = null;
+const markers = {};
+let meMarker = null;
+
+function load() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; } }
+function persist() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(surveys)); } catch(e){ console.error(e); } }
+
+let toastTimer;
+function flash(msg, kind) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.style.background = kind === "err" ? C.alert : C.ink;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+}
+
+function pinHtml(lot, active) {
+  const fill = active ? C.signal : C.brass;
+  const ring = active ? "#ffffff" : "rgba(255,255,255,0.85)";
+  return '<svg width="26" height="34" viewBox="0 0 26 34" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M13 0C5.8 0 0 5.6 0 12.6 0 22 13 34 13 34s13-12 13-21.4C26 5.6 20.2 0 13 0Z" fill="'+fill+'"/>' +
+    '<circle cx="13" cy="12.5" r="6.5" fill="'+ring+'"/></svg>';
+}
+
+// ── Map ───────────────────────────────────────────────────────────
+const map = L.map("map", { zoomControl:true }).setView(CENTER, 16);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution:"© OpenStreetMap contributors", maxZoom:19
+}).addTo(map);
+
+LOTS.forEach(lot => {
+  const m = L.marker([lot.lat, lot.lng], {
+    icon: L.divIcon({ className:"", html:pinHtml(lot,false), iconSize:[26,34], iconAnchor:[13,34] })
+  }).addTo(map);
+  m.on("click", () => selectLot(lot.id));
+  markers[lot.id] = m;
+});
+setTimeout(() => map.invalidateSize(), 200);
+
+// ── Lot selection ─────────────────────────────────────────────────
+function selectLot(id) {
+  selectedLot = id;
+  LOTS.forEach(lot => {
+    markers[lot.id].setIcon(L.divIcon({ className:"", html:pinHtml(lot, lot.id===id), iconSize:[26,34], iconAnchor:[13,34] }));
+  });
+  const lot = LOTS.find(l => l.id === id);
+  if (lot) map.panTo([lot.lat, lot.lng], { animate:true });
+  renderLots();
+  renderCapHint();
+}
+
+function renderLots() {
+  const wrap = document.getElementById("lotList");
+  wrap.innerHTML = "";
+  LOTS.forEach(lot => {
+    const btn = document.createElement("button");
+    btn.className = "lot-chip" + (lot.id === selectedLot ? " active" : "");
+    btn.innerHTML = '<span class="lot-name">'+lot.name+'</span><span class="lot-cap">'+lot.capacity+' spots</span>';
+    btn.onclick = () => selectLot(lot.id);
+    wrap.appendChild(btn);
+  });
+}
+
+function renderCapHint() {
+  const lot = LOTS.find(l => l.id === selectedLot);
+  document.getElementById("capHint").textContent = lot ? " of " + lot.capacity : "";
+}
+
+// ── Geolocation ───────────────────────────────────────────────────
+document.getElementById("locBtn").onclick = function() {
+  if (!navigator.geolocation) { flash("This device has no location support.", "err"); return; }
+  const btn = this;
+  btn.disabled = true; btn.textContent = "Locating…";
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const { latitude, longitude } = pos.coords;
+      myLocation = { lat:latitude, lng:longitude };
+      const meIcon = L.divIcon({ className:"", iconSize:[18,18], iconAnchor:[9,9],
+        html:'<div style="width:18px;height:18px;border-radius:50%;background:'+C.signal+';border:3px solid #fff;box-shadow:0 0 0 3px rgba(31,111,84,0.35);"></div>' });
+      if (meMarker) meMarker.setLatLng([latitude, longitude]);
+      else meMarker = L.marker([latitude, longitude], { icon:meIcon }).addTo(map);
+      map.setView([latitude, longitude], 17, { animate:true });
+      flash("Centered on your location.");
+      btn.disabled = false; btn.textContent = "◎ Use my location";
+    },
+    err => {
+      flash(err.code === 1 ? "Location permission was denied." : "Couldn't get a location fix.", "err");
+      btn.disabled = false; btn.textContent = "◎ Use my location";
+    },
+    { enableHighAccuracy:true, timeout:10000 }
+  );
+};
+
+// ── Submit ────────────────────────────────────────────────────────
+document.getElementById("submitBtn").onclick = function() {
+  const lot = LOTS.find(l => l.id === selectedLot);
+  if (!lot) { flash("Pick a lot first.", "err"); return; }
+  const input = document.getElementById("spotsInput");
+  const n = parseInt(input.value, 10);
+  if (isNaN(n) || n < 0) { flash("Enter how many spots are filled.", "err"); return; }
+  if (n > lot.capacity) { flash("That's above "+lot.name+"'s capacity of "+lot.capacity+".", "err"); return; }
+  surveys.unshift({
+    id: Date.now()+"-"+Math.random().toString(36).slice(2,7),
+    lotName: lot.name, capacity: lot.capacity, spotsFilled: n,
+    timestamp: new Date().toISOString(),
+    surveyLat: myLocation ? myLocation.lat : null,
+    surveyLng: myLocation ? myLocation.lng : null,
+  });
+  persist();
+  input.value = "";
+  flash("Logged "+n+"/"+lot.capacity+" at "+lot.name+".");
+  renderLog();
+};
+
+// ── Today's log ───────────────────────────────────────────────────
+function fmtTime(iso) {
+  return new Date(iso).toLocaleString(undefined, { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" });
+}
+
+function renderLog() {
+  const today = new Date().toDateString();
+  const todays = surveys.filter(s => new Date(s.timestamp).toDateString() === today);
+  document.getElementById("todayCount").textContent = todays.length;
+  const area = document.getElementById("logArea");
+
+  if (todays.length === 0) {
+    area.innerHTML = '<div class="empty">No counts logged yet. Pick a lot, enter the filled spots, and log it.</div>';
+    return;
+  }
+  area.innerHTML = "";
+  todays.forEach(s => {
+    const pct = Math.round((s.spotsFilled / s.capacity) * 100);
+    const hot = pct >= 85;
+    const row = document.createElement("div");
+    row.className = "log-row";
+    row.innerHTML =
+      '<div class="log-bar-track"><div class="log-bar-fill" style="width:'+Math.min(pct,100)+'%;background:'+(hot?C.alert:C.signal)+'"></div></div>' +
+      '<div><div class="log-lot">'+s.lotName+'</div><div class="log-time">'+fmtTime(s.timestamp)+'</div></div>' +
+      '<div class="log-figures">' +
+        '<span class="log-count">'+s.spotsFilled+'<span class="log-cap">/'+s.capacity+'</span></span>' +
+        '<span class="log-pct" style="color:'+(hot?C.alert:C.signalDim)+'">'+pct+'%</span>' +
+        '<button class="del-btn" aria-label="Delete">×</button>' +
+      '</div>';
+    row.querySelector(".del-btn").onclick = () => {
+      surveys = surveys.filter(x => x.id !== s.id);
+      persist(); renderLog();
+    };
+    area.appendChild(row);
+  });
+}
+
+// ── CSV export ────────────────────────────────────────────────────
+document.getElementById("exportBtn").onclick = function() {
+  if (surveys.length === 0) { flash("Nothing to export yet.", "err"); return; }
+  const headers = ["timestamp","lot_name","spots_filled","capacity","percent_full","survey_lat","survey_lng"];
+  const rows = surveys.map(s => [
+    s.timestamp, '"'+s.lotName.replace(/"/g,'""')+'"', s.spotsFilled, s.capacity,
+    Math.round((s.spotsFilled/s.capacity)*100), s.surveyLat ?? "", s.surveyLng ?? ""
+  ].join(","));
+  const csv = [headers.join(","), ...rows].join("\n");
+  const blob = new Blob([csv], { type:"text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "parking-survey-"+new Date().toISOString().slice(0,10)+".csv";
+  a.click(); URL.revokeObjectURL(url);
+  flash("Exported "+surveys.length+" record"+(surveys.length===1?"":"s")+".");
+};
+
+// ── Live clock ────────────────────────────────────────────────────
+function tickClock() {
+  document.getElementById("liveTime").textContent =
+    new Date().toLocaleString(undefined, { hour:"numeric", minute:"2-digit" });
+}
+setInterval(tickClock, 10000); tickClock();
+
+// ── Init ──────────────────────────────────────────────────────────
+renderLots();
+renderLog();
+</script>
+</body>
+</html>
