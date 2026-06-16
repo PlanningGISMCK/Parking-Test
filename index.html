@@ -3,125 +3,150 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>McKinney Parking Survey</title>
+<title>McKinney Downtown Parking Survey</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   :root {
     --ink:#14211c; --paper:#f6f4ec; --panel:#fff; --line:#d9d4c4;
     --brass:#9a6a2f; --brass-deep:#6e4a1d; --signal:#1f6f54;
-    --signal-dim:#3f8a6f; --alert:#a8401f; --muted:#6b6657;
+    --signal-dim:#3f8a6f; --alert:#a8401f; --muted:#6b6657; --soft:#efece1;
   }
   * { box-sizing:border-box; }
   html,body { margin:0; padding:0; }
   body {
     font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-    background:var(--paper); color:var(--ink);
-    -webkit-text-size-adjust:100%;
+    background:var(--paper); color:var(--ink); -webkit-text-size-adjust:100%;
   }
-  .shell { max-width:1000px; margin:0 auto; padding:22px 22px 60px; min-height:100vh; }
-  .header {
-    display:flex; justify-content:space-between; align-items:flex-end;
-    padding-bottom:18px; border-bottom:2px solid var(--ink); margin-bottom:20px;
-  }
-  .eyebrow {
-    font-size:11px; letter-spacing:.16em; text-transform:uppercase;
-    color:var(--brass-deep); font-weight:600; margin-bottom:4px;
-  }
-  h1.title { font-family:'Fraunces',Georgia,serif; font-size:34px; line-height:1; margin:0; font-weight:600; letter-spacing:-.01em; }
+  .shell { max-width:1040px; margin:0 auto; padding:20px 20px 70px; min-height:100vh; }
+
+  .header { display:flex; justify-content:space-between; align-items:flex-end; padding-bottom:14px; border-bottom:2px solid var(--ink); margin-bottom:16px; }
+  .eyebrow { font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--brass-deep); font-weight:600; margin-bottom:4px; }
+  h1.title { font-family:'Fraunces',Georgia,serif; font-size:30px; line-height:1; margin:0; font-weight:600; letter-spacing:-.01em; }
   .counter { text-align:right; line-height:1; }
-  .counter-num { display:block; font-family:'Fraunces',Georgia,serif; font-size:30px; font-weight:600; color:var(--signal); }
+  .counter-num { display:block; font-family:'Fraunces',Georgia,serif; font-size:28px; font-weight:600; color:var(--signal); }
   .counter-label { font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
-  .grid { display:grid; grid-template-columns:1.15fr 1fr; gap:16px; margin-bottom:16px; }
+
+  .round-bar { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:16px; }
+  .round-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .round-field { display:flex; flex-direction:column; gap:5px; }
+  .round-field label { font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .round-field input, .round-field select {
+    font-family:inherit; font-size:14px; padding:8px 10px; border:1px solid var(--line);
+    border-radius:7px; background:var(--soft); color:var(--ink); outline:none; width:100%;
+  }
+  .round-note { font-size:11px; color:var(--muted); margin-top:10px; }
+
+  .grid { display:grid; grid-template-columns:1.1fr 1fr; gap:16px; margin-bottom:16px; }
+
   .map-card { position:relative; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:8px; }
-  #map { height:360px; width:100%; border-radius:10px; background:#e8e6dc; }
+  #map { height:330px; width:100%; border-radius:10px; background:#e8e6dc; }
   .leaflet-container { font-family:inherit; border-radius:10px; }
-  .loc-btn {
-    position:absolute; bottom:18px; left:18px; z-index:500;
-    background:var(--ink); color:var(--paper); border:none; border-radius:8px;
-    padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer;
-    box-shadow:0 2px 10px rgba(0,0,0,.2);
-  }
+  .loc-btn { position:absolute; bottom:18px; left:18px; z-index:500; background:var(--ink); color:var(--paper); border:none; border-radius:8px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,.2); }
   .loc-btn:disabled { opacity:.6; cursor:default; }
-  .form-card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; display:flex; flex-direction:column; }
-  .field-label { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:600; margin-bottom:8px; }
-  .cap-hint { color:var(--brass); letter-spacing:.04em; }
-  .lot-list { display:flex; flex-direction:column; gap:6px; margin-bottom:18px; }
-  .lot-chip {
-    display:flex; justify-content:space-between; align-items:center; text-align:left;
-    background:var(--paper); border:1px solid var(--line); border-radius:8px;
-    padding:11px 13px; cursor:pointer; transition:all .12s ease; width:100%;
-    font-family:inherit; color:inherit;
-  }
-  .lot-chip.active { background:var(--signal); border-color:var(--signal); box-shadow:0 2px 8px rgba(31,111,84,.25); color:#fff; }
-  .lot-chip.active .lot-cap { color:rgba(255,255,255,.8); }
-  .lot-name { font-size:14px; font-weight:600; }
-  .lot-cap { font-size:12px; color:var(--muted); }
-  .num-input {
-    font-family:'Fraunces',Georgia,serif; font-size:40px; font-weight:600;
-    padding:8px 14px; border:1px solid var(--line); border-radius:8px; width:100%;
-    color:var(--ink); background:var(--paper); margin-bottom:16px; outline:none;
-  }
-  .num-input::-webkit-outer-spin-button,
-  .num-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
-  .num-input { -moz-appearance:textfield; }
-  .time-row {
-    display:flex; justify-content:space-between; align-items:baseline;
-    padding:10px 0; border-top:1px dashed var(--line); border-bottom:1px dashed var(--line); margin-bottom:16px;
-  }
-  .time-label { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:600; }
-  .time-value { font-size:14px; font-weight:600; }
-  .time-auto { font-size:11px; font-weight:400; color:var(--muted); }
-  .submit-btn {
-    background:var(--brass); color:#fff; border:none; border-radius:8px; padding:15px;
-    font-size:15px; font-weight:700; letter-spacing:.02em; cursor:pointer; margin-top:auto;
-    font-family:inherit;
-  }
-  .log-card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; }
-  .log-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+
+  .form-card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; display:flex; flex-direction:column; min-height:0; }
+  .field-label { font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:600; margin-bottom:8px; }
+  .filter-row { display:flex; gap:8px; margin-bottom:10px; }
+  .filter-row input { flex:1; font-family:inherit; font-size:14px; padding:9px 11px; border:1px solid var(--line); border-radius:7px; background:var(--soft); outline:none; }
+  .filter-row select { font-family:inherit; font-size:13px; padding:9px 8px; border:1px solid var(--line); border-radius:7px; background:var(--soft); outline:none; }
+  .fac-list { display:flex; flex-direction:column; gap:5px; overflow-y:auto; max-height:240px; margin-bottom:14px; padding-right:2px; }
+  .fac-chip { display:flex; justify-content:space-between; align-items:center; text-align:left; background:var(--soft); border:1px solid var(--line); border-radius:8px; padding:9px 11px; cursor:pointer; transition:all .1s ease; width:100%; font-family:inherit; color:inherit; gap:8px; }
+  .fac-chip.active { background:var(--signal); border-color:var(--signal); color:#fff; box-shadow:0 2px 8px rgba(31,111,84,.25); }
+  .fac-chip.active .fac-meta { color:rgba(255,255,255,.82); }
+  .fac-main { min-width:0; }
+  .fac-name { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .fac-meta { font-size:11px; color:var(--muted); }
+  .fac-cap { font-size:12px; font-weight:600; white-space:nowrap; }
+  .counted-tag { font-size:10px; padding:2px 6px; border-radius:10px; background:var(--signal); color:#fff; font-weight:600; white-space:nowrap; }
+
+  .empty-list { padding:18px; text-align:center; color:var(--muted); font-size:13px; }
+
+  .count-panel { border-top:1px dashed var(--line); padding-top:14px; }
+  .count-facility { font-family:'Fraunces',Georgia,serif; font-size:18px; font-weight:600; margin-bottom:2px; }
+  .count-sub { font-size:12px; color:var(--muted); margin-bottom:12px; }
+  .mode-toggle { display:flex; gap:0; margin-bottom:14px; border:1px solid var(--brass); border-radius:8px; overflow:hidden; }
+  .mode-btn { flex:1; padding:9px; font-family:inherit; font-size:13px; font-weight:600; background:var(--panel); color:var(--brass-deep); border:none; cursor:pointer; }
+  .mode-btn.on { background:var(--brass); color:#fff; }
+  .mode-hint { font-size:11px; color:var(--muted); margin:-8px 0 12px; }
+
+  .level-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .level-name { flex:1; font-size:13px; font-weight:500; }
+  .level-input { width:84px; font-family:'Fraunces',Georgia,serif; font-size:20px; font-weight:600; padding:5px 9px; border:1px solid var(--line); border-radius:7px; text-align:right; background:var(--soft); color:var(--ink); outline:none; }
+  .level-input::-webkit-outer-spin-button,.level-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .level-input{-moz-appearance:textfield;}
+
+  .derived { display:flex; justify-content:space-between; align-items:center; background:var(--soft); border-radius:8px; padding:11px 13px; margin:12px 0; }
+  .derived-item { text-align:center; flex:1; }
+  .derived-num { font-family:'Fraunces',Georgia,serif; font-size:22px; font-weight:600; line-height:1; }
+  .derived-label { font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-top:3px; }
+  .over-flag { color:var(--alert); font-size:12px; font-weight:600; margin:6px 0; text-align:center; }
+
+  .notes-input { width:100%; font-family:inherit; font-size:13px; padding:9px 11px; border:1px solid var(--line); border-radius:7px; background:var(--soft); outline:none; margin-bottom:12px; resize:vertical; min-height:38px; }
+  .submit-btn { background:var(--brass); color:#fff; border:none; border-radius:8px; padding:14px; font-size:15px; font-weight:700; letter-spacing:.02em; cursor:pointer; width:100%; font-family:inherit; }
+  .pick-prompt { color:var(--muted); font-size:14px; text-align:center; padding:30px 14px; border-top:1px dashed var(--line); }
+
+  .log-card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; }
+  .log-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px; }
   h2.log-title { font-family:'Fraunces',Georgia,serif; font-size:20px; margin:0; font-weight:600; }
-  .export-btn {
-    background:transparent; color:var(--brass-deep); border:1.5px solid var(--brass);
-    border-radius:7px; padding:8px 13px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
-  }
-  .empty {
-    padding:26px 14px; text-align:center; color:var(--muted); font-size:14px;
-    background:var(--paper); border-radius:8px; border:1px dashed var(--line);
-  }
-  .log-row { position:relative; padding:12px 4px 14px; }
+  .export-group { display:flex; gap:8px; }
+  .export-btn { background:transparent; color:var(--brass-deep); border:1.5px solid var(--brass); border-radius:7px; padding:8px 12px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .empty { padding:26px 14px; text-align:center; color:var(--muted); font-size:14px; background:var(--soft); border-radius:8px; border:1px dashed var(--line); }
+  .log-row { position:relative; padding:11px 4px 13px; }
   .log-bar-track { position:absolute; left:0; bottom:0; height:3px; width:100%; background:var(--line); border-radius:2px; }
   .log-bar-fill { height:100%; border-radius:2px; transition:width .3s ease; }
   .log-lot { font-size:14px; font-weight:600; }
-  .log-time { font-size:12px; color:var(--muted); }
-  .log-figures { position:absolute; right:4px; top:10px; display:flex; align-items:center; gap:12px; }
-  .log-count { font-family:'Fraunces',Georgia,serif; font-size:20px; font-weight:600; }
-  .log-cap { font-size:14px; color:var(--muted); font-weight:400; }
-  .log-pct { font-size:14px; font-weight:700; min-width:40px; text-align:right; }
-  .del-btn { background:transparent; border:none; color:var(--muted); font-size:22px; line-height:1; cursor:pointer; padding:0 2px; }
+  .log-sub { font-size:11px; color:var(--muted); }
+  .log-figures { position:absolute; right:4px; top:9px; display:flex; align-items:center; gap:12px; }
+  .log-count { font-family:'Fraunces',Georgia,serif; font-size:19px; font-weight:600; }
+  .log-cap { font-size:13px; color:var(--muted); font-weight:400; }
+  .log-pct { font-size:13px; font-weight:700; min-width:38px; text-align:right; }
+  .del-btn { background:transparent; border:none; color:var(--muted); font-size:21px; line-height:1; cursor:pointer; padding:0 2px; }
   .footnote { margin-top:14px; padding-top:12px; border-top:1px solid var(--line); font-size:12px; color:var(--muted); }
-  .toast {
-    position:fixed; bottom:22px; left:50%; transform:translateX(-50%); color:#fff;
-    padding:12px 20px; border-radius:9px; font-size:14px; font-weight:600;
-    box-shadow:0 6px 24px rgba(0,0,0,.25); z-index:1000; max-width:90%; text-align:center;
-    opacity:0; pointer-events:none; transition:opacity .2s ease;
-  }
+
+  .toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); color:#fff; padding:12px 20px; border-radius:9px; font-size:14px; font-weight:600; box-shadow:0 6px 24px rgba(0,0,0,.25); z-index:1000; max-width:90%; text-align:center; opacity:0; pointer-events:none; transition:opacity .2s ease; }
   .toast.show { opacity:1; }
-  @media (max-width:820px) { .grid { grid-template-columns:1fr; } }
+  @media (max-width:860px) { .grid { grid-template-columns:1fr; } .round-grid { grid-template-columns:repeat(2,1fr); } }
 </style>
 </head>
 <body>
 <div class="shell">
   <header class="header">
     <div>
-      <div class="eyebrow">City of McKinney · Field Survey</div>
-      <h1 class="title">Parking Occupancy</h1>
+      <div class="eyebrow">City of McKinney · Planning · Field Survey</div>
+      <h1 class="title">Downtown Parking Count</h1>
     </div>
     <div class="counter">
-      <span class="counter-num" id="todayCount">0</span>
-      <span class="counter-label">logged today</span>
+      <span class="counter-num" id="roundCount">0</span>
+      <span class="counter-label">counted this round</span>
     </div>
   </header>
+
+  <div class="round-bar">
+    <div class="round-grid">
+      <div class="round-field">
+        <label>Survey date</label>
+        <input type="date" id="rDate" />
+      </div>
+      <div class="round-field">
+        <label>Shift</label>
+        <select id="rShift">
+          <option>Morning</option><option selected>Mid-day</option>
+          <option>Afternoon</option><option>Evening</option>
+        </select>
+      </div>
+      <div class="round-field">
+        <label>Surveyor</label>
+        <input type="text" id="rSurveyor" placeholder="e.g. N. Ataie" />
+      </div>
+      <div class="round-field">
+        <label>Day</label>
+        <input type="text" id="rDay" readonly />
+      </div>
+    </div>
+    <div class="round-note">This date + shift + surveyor stamps every count you log. Set it once at the start of a round.</div>
+  </div>
 
   <div class="grid">
     <section class="map-card">
@@ -130,123 +155,345 @@
     </section>
 
     <section class="form-card">
-      <label class="field-label">Lot</label>
-      <div class="lot-list" id="lotList"></div>
-
-      <label class="field-label">Spots filled<span class="cap-hint" id="capHint"></span></label>
-      <input type="number" inputmode="numeric" min="0" class="num-input" id="spotsInput" placeholder="0" />
-
-      <div class="time-row">
-        <span class="time-label">Time of day</span>
-        <span class="time-value"><span id="liveTime"></span><span class="time-auto"> · auto-stamped on submit</span></span>
+      <label class="field-label">Facility</label>
+      <div class="filter-row">
+        <input type="text" id="facSearch" placeholder="Search facilities…" />
+        <select id="catFilter">
+          <option value="">All types</option>
+          <option>Garage</option><option>Public lot</option>
+          <option>On-street</option><option>Private lot</option>
+        </select>
       </div>
+      <div class="fac-list" id="facList"></div>
 
-      <button class="submit-btn" id="submitBtn">Log this count</button>
+      <div id="countPanel"></div>
     </section>
   </div>
 
   <section class="log-card">
     <div class="log-head">
-      <h2 class="log-title">Today's counts</h2>
-      <button class="export-btn" id="exportBtn">↓ Export CSV</button>
+      <h2 class="log-title">This round's counts</h2>
+      <div class="export-group">
+        <button class="export-btn" id="exportSummary">↓ Summary CSV</button>
+        <button class="export-btn" id="exportLevels">↓ By-level CSV</button>
+        <button class="export-btn" id="exportJson">↓ JSON</button>
+      </div>
     </div>
     <div id="logArea"></div>
-    <div class="footnote">Counts are stored on this iPad only. Export to CSV to keep a durable copy.</div>
+    <div class="footnote">Counts are stored on this iPad only — no central sync. Export after each round to keep a durable copy and combine with other devices.</div>
   </section>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-// ── Sample McKinney, TX parking lots ──────────────────────────────
-// Replace these with your real lots. Each needs: id, name, capacity, lat, lng.
-const LOTS = [
-  { id:"lot-a", name:"Downtown Square — East",  capacity:60,  lat:33.197,  lng:-96.6155 },
-  { id:"lot-b", name:"Downtown Square — West",  capacity:45,  lat:33.1975, lng:-96.617  },
-  { id:"lot-c", name:"Chestnut St Garage",      capacity:220, lat:33.1962, lng:-96.6138 },
-  { id:"lot-d", name:"Tennessee St Lot",        capacity:80,  lat:33.1988, lng:-96.6147 },
-  { id:"lot-e", name:"City Hall Visitor Lot",   capacity:35,  lat:33.1955, lng:-96.6172 },
+// ════════════════════════════════════════════════════════════════
+//  FACILITY INVENTORY  (37 facilities from the 2020 parking study)
+//  Coordinates are approximate downtown McKinney points for mappable
+//  facilities; on-street zones are frontage ranges, shown without a pin.
+//  Refine lat/lng as needed. Levels listed for garages.
+// ════════════════════════════════════════════════════════════════
+const FACILITIES = [
+  { id:"chestnut-garage", name:"Chestnut Commons Garage", address:"202 S. Chestnut St.", category:"Garage", lotType:"garage", quadrant:"B", ring:"Outer", capacity:312, levels:["Ground / Level 1","Level 2","Level 3","Level 4","Roof"], lat:33.198413, lng:-96.612906 },
+  { id:"davis-garage", name:"Davis at the Square Garage", address:"260 E. Davis St. · public levels only", category:"Garage", lotType:"garage", quadrant:"D", ring:"Outer", capacity:196, levels:["Ground / Level 1","Level 2","Level 3"], lat:33.195241, lng:-96.61416 },
+  { id:"city-lot-1", name:"City Lot #1", address:"", category:"Public lot", lotType:"surface lot", quadrant:"B", ring:"Outer", capacity:103, levels:null, lat:33.199523, lng:-96.613897 },
+  { id:"city-lot-2", name:"City Lot #2", address:"", category:"Public lot", lotType:"surface lot", quadrant:"A", ring:"Mid", capacity:75, levels:null, lat:33.197597, lng:-96.617098 },
+  { id:"city-lot-3", name:"City Lot #3", address:"", category:"Public lot", lotType:"surface lot", quadrant:"A", ring:"Mid", capacity:83, levels:null, lat:33.198846, lng:-96.616241 },
+  { id:"lot-1-north", name:"Lot 1 North", address:"", category:"Public lot", lotType:"surface lot", quadrant:"B", ring:"Outer", capacity:124, levels:null, lat:33.20005, lng:-96.614713 },
+  { id:"lot-1-south", name:"Lot 1 South", address:"", category:"Public lot", lotType:"surface lot", quadrant:"B", ring:"Outer", capacity:48, levels:null, lat:33.199411, lng:-96.614525 },
+  { id:"lot-4", name:"Lot 4", address:"", category:"Public lot", lotType:"surface lot", quadrant:"C", ring:"Mid", capacity:112, levels:null, lat:33.1963, lng:-96.61636 },
+  { id:"lot-5", name:"Lot 5", address:"", category:"Public lot", lotType:"surface lot", quadrant:"D", ring:"Mid", capacity:39, levels:null, lat:33.196757, lng:-96.613778 },
+  { id:"lot-6", name:"Lot 6", address:"", category:"Public lot", lotType:"surface lot", quadrant:"D", ring:"Outer", capacity:32, levels:null, lat:33.196731, lng:-96.612744 },
+  { id:"lot-h-north", name:"Lot H — North", address:"", category:"Public lot", lotType:"surface lot", quadrant:"A", ring:"Outer", capacity:43, levels:null, lat:33.200358, lng:-96.6162 },
+  { id:"lot-h-south", name:"Lot H — South", address:"", category:"Public lot", lotType:"surface lot", quadrant:"A", ring:"Outer", capacity:40, levels:null, lat:33.200012, lng:-96.616257 },
+  { id:"city-hall-lot", name:"City Hall Lot", address:"", category:"Public lot", lotType:"surface lot", quadrant:"B", ring:"Mid", capacity:29, levels:null, lat:33.1957, lng:-96.6148 },
+  { id:"dev-services-lot", name:"Development Services Lot", address:"", category:"Public lot", lotType:"surface lot", quadrant:"A", ring:"Mid", capacity:44, levels:null, lat:33.1983, lng:-96.6155 },
+  { id:"hall-library-lot", name:"Hall Library Lot", address:"", category:"Public lot", lotType:"surface lot", quadrant:"A", ring:"Outer", capacity:65, levels:null, lat:33.200166, lng:-96.615319 },
+  { id:"court-lot-west", name:"Municipal Court Lot West", address:"", category:"Public lot", lotType:"surface lot", quadrant:"D", ring:"Mid", capacity:27, levels:null, lat:33.196457, lng:-96.614346 },
+  { id:"court-lots", name:"Municipal Court Lots", address:"", category:"Public lot", lotType:"surface lot", quadrant:"D", ring:"Mid", capacity:10, levels:null, lat:33.196423, lng:-96.614035 },
+  { id:"water-tower-lot", name:"Water Tower Lot", address:"", category:"Public lot", lotType:"surface lot", quadrant:"D", ring:"Outer", capacity:21, levels:null, lat:33.196288, lng:-96.612842 },
+  { id:"wysong-c-north", name:"Wysong — Lot C North", address:"", category:"Public lot", lotType:"surface lot", quadrant:"B", ring:"Outer", capacity:19, levels:null, lat:33.199796, lng:-96.613128 },
+  { id:"wysong-c-south", name:"Wysong — Lot C South", address:"", category:"Public lot", lotType:"surface lot", quadrant:"B", ring:"Outer", capacity:9, levels:null, lat:33.199473, lng:-96.613131 },
+  { id:"playful-corp-lot", name:"Playful Corp. Lot", address:"", category:"Public lot", lotType:"surface lot", quadrant:"D", ring:"Outer", capacity:125, levels:null, lat:33.194926, lng:-96.612906 },
+  { id:"os-a-inner", name:"On-street — Zone A · Inner · Ring 1", address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:106, levels:null, lat:null, lng:null },
+  { id:"os-a-mid", name:"On-street — Zone A · Mid · Ring 2", address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Mid", capacity:44, levels:null, lat:null, lng:null },
+  { id:"os-a-outer", name:"On-street — Zone A · Outer · Ring 3", address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Outer", capacity:60, levels:null, lat:null, lng:null },
+  { id:"os-b-inner", name:"On-street — Zone B · Inner · Ring 1", address:"", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Inner", capacity:39, levels:null, lat:null, lng:null },
+  { id:"os-b-mid", name:"On-street — Zone B · Mid · Ring 2", address:"", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Mid", capacity:19, levels:null, lat:null, lng:null },
+  { id:"os-b-outer", name:"On-street — Zone B · Outer · Ring 3", address:"", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Outer", capacity:33, levels:null, lat:null, lng:null },
+  { id:"os-c-inner", name:"On-street — Zone C · Inner · Ring 1", address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Inner", capacity:39, levels:null, lat:null, lng:null },
+  { id:"os-c-mid", name:"On-street — Zone C · Mid · Ring 2", address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Mid", capacity:17, levels:null, lat:null, lng:null },
+  { id:"os-c-outer", name:"On-street — Zone C · Outer · Ring 3", address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:74, levels:null, lat:null, lng:null },
+  { id:"os-d-inner", name:"On-street — Zone D · Inner · Ring 1", address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Inner", capacity:17, levels:null, lat:null, lng:null },
+  { id:"os-d-mid", name:"On-street — Zone D · Mid · Ring 2", address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Mid", capacity:30, levels:null, lat:null, lng:null },
+  { id:"os-d-outer", name:"On-street — Zone D · Outer · Ring 3", address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:123, levels:null, lat:null, lng:null },
+  { id:"surrey-house", name:"Surrey House", address:"", category:"Private lot", lotType:"private lot", quadrant:"C", ring:"Outer", capacity:27, levels:null, lat:33.194363, lng:-96.615369 },
+  { id:"dancewear-lot", name:"Dancewear Lot", address:"", category:"Private lot", lotType:"private lot", quadrant:"A", ring:"Mid", capacity:9, levels:null, lat:33.1984, lng:-96.6166 },
+  { id:"joses-hamms-lot", name:"Jose's / Hamm's Lot", address:"", category:"Private lot", lotType:"private lot", quadrant:"C", ring:"Outer", capacity:7, levels:null, lat:33.197042, lng:-96.618021 },
+  { id:"longhorn", name:"Longhorn", address:"", category:"Private lot", lotType:"private lot", quadrant:"C", ring:"Outer", capacity:6, levels:null, lat:33.1958, lng:-96.616096 },
 ];
-const CENTER = [33.1972, -96.6153];
-const STORAGE_KEY = "mckinney_parking_surveys_v1";
-const C = { ink:"#14211c", paper:"#f6f4ec", brass:"#9a6a2f", signal:"#1f6f54", signalDim:"#3f8a6f", alert:"#a8401f" };
 
-let selectedLot = null;
-let surveys = load();
+const CENTER = [33.1972, -96.6150];
+const STORAGE_KEY = "mckinney_parking_round_v1";
+const C = { ink:"#14211c", brass:"#9a6a2f", signal:"#1f6f54", signalDim:"#3f8a6f", alert:"#a8401f" };
+
+let selectedId = null;
+let countMode = "occupied";
+let levelCounts = {};
+let records = load();
 let myLocation = null;
 const markers = {};
 let meMarker = null;
 
 function load() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; } }
-function persist() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(surveys)); } catch(e){ console.error(e); } }
+function persist() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); } catch(e){ console.error(e); } }
 
 let toastTimer;
 function flash(msg, kind) {
   const t = document.getElementById("toast");
-  t.textContent = msg;
-  t.style.background = kind === "err" ? C.alert : C.ink;
-  t.classList.add("show");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+  t.textContent = msg; t.style.background = kind === "err" ? C.alert : C.ink;
+  t.classList.add("show"); clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2800);
 }
 
-function pinHtml(lot, active) {
-  const fill = active ? C.signal : C.brass;
-  const ring = active ? "#ffffff" : "rgba(255,255,255,0.85)";
-  return '<svg width="26" height="34" viewBox="0 0 26 34" xmlns="http://www.w3.org/2000/svg">' +
-    '<path d="M13 0C5.8 0 0 5.6 0 12.6 0 22 13 34 13 34s13-12 13-21.4C26 5.6 20.2 0 13 0Z" fill="'+fill+'"/>' +
-    '<circle cx="13" cy="12.5" r="6.5" fill="'+ring+'"/></svg>';
+function fac(id) { return FACILITIES.find(f => f.id === id); }
+function levelsFor(f) { return f.levels || ["All spaces"]; }
+
+function derive(f, mode, counted) {
+  let occupied, vacant, over = false;
+  if (mode === "occupied") { occupied = counted; }
+  else { vacant = counted; occupied = f.capacity - vacant; }
+  if (occupied > f.capacity) { occupied = f.capacity; over = true; }
+  if (occupied < 0) { occupied = 0; over = true; }
+  vacant = f.capacity - occupied;
+  const pct = Math.round((occupied / f.capacity) * 100);
+  return { occupied, vacant, pct, over };
 }
 
-// ── Map ───────────────────────────────────────────────────────────
+// ── MAP ──
 const map = L.map("map", { zoomControl:true }).setView(CENTER, 16);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution:"© OpenStreetMap contributors", maxZoom:19
 }).addTo(map);
 
-LOTS.forEach(lot => {
-  const m = L.marker([lot.lat, lot.lng], {
-    icon: L.divIcon({ className:"", html:pinHtml(lot,false), iconSize:[26,34], iconAnchor:[13,34] })
+// ════════════════════════════════════════════════════════════════
+//  PARKING-LOT POLYGON OVERLAY  (reprojected from the study geojson,
+//  EPSG:2276 → WGS84; private lots removed; segments named by zone)
+// ════════════════════════════════════════════════════════════════
+const LOT_GEO = '{"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {"LotName": "Lot 5", "LotOwner": "", "LotType": "public off-street", "Quadrant": "D", "StudyRing": "Mid", "CurrentPar": 39, "Notes": "", "DisplayName": "Lot 5"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.613525, 33.196684], [-96.613524, 33.196856], [-96.614158, 33.196868], [-96.614157, 33.196695], [-96.613525, 33.196684]]]}}, {"type": "Feature", "properties": {"LotName": "Lot 6", "LotOwner": "", "LotType": "public off-street", "Quadrant": "D", "StudyRing": "Outer", "CurrentPar": 32, "Notes": "Tree Occlusion", "DisplayName": "Lot 6"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.612578, 33.196621], [-96.612579, 33.196898], [-96.612994, 33.196896], [-96.612992, 33.196619], [-96.612578, 33.196621]]]}}, {"type": "Feature", "properties": {"LotName": "Lot 4", "LotOwner": "", "LotType": "public off-street", "Quadrant": "C", "StudyRing": "Mid", "CurrentPar": 112, "Notes": "Southern Spots - 3 Deep Shadows", "DisplayName": "Lot 4"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.616594, 33.196088], [-96.616595, 33.196001], [-96.616582, 33.196001], [-96.61633, 33.196004], [-96.616327, 33.196246], [-96.616326, 33.196328], [-96.615937, 33.196325], [-96.615937, 33.19633], [-96.615932, 33.196725], [-96.616576, 33.196731], [-96.616589, 33.196731], [-96.616594, 33.196088]]]}}, {"type": "Feature", "properties": {"LotName": "City Lot #2", "LotOwner": "City of McKinney", "LotType": "public off-street", "Quadrant": "A", "StudyRing": "Mid", "CurrentPar": 75, "Notes": "", "DisplayName": "City Lot #2"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.617307, 33.197873], [-96.61731, 33.197321], [-96.61689, 33.197321], [-96.616888, 33.197321], [-96.616885, 33.197874], [-96.617307, 33.197873]]]}}, {"type": "Feature", "properties": {"LotName": "City Lot #3", "LotOwner": "City of McKinney", "LotType": "public off-street", "Quadrant": "A", "StudyRing": "Mid", "CurrentPar": 83, "Notes": "Tree Occlusion Western Spots, Southern Spots", "DisplayName": "City Lot #3"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615932, 33.198677], [-96.615934, 33.199158], [-96.616344, 33.199157], [-96.616342, 33.198809], [-96.61635, 33.198809], [-96.616547, 33.198809], [-96.616547, 33.198675], [-96.615932, 33.198677]]]}}, {"type": "Feature", "properties": {"LotName": "Lot 1 North", "LotOwner": "", "LotType": "public off-street", "Quadrant": "B", "StudyRing": "Outer", "CurrentPar": 124, "Notes": "", "DisplayName": "Lot 1 North"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.614878, 33.199761], [-96.614298, 33.199758], [-96.614292, 33.200434], [-96.614876, 33.200438], [-96.614882, 33.200438], [-96.614888, 33.199761], [-96.614878, 33.199761]]]}}, {"type": "Feature", "properties": {"LotName": "Hall Library Lot", "LotOwner": "City of McKinney", "LotType": "public off-street", "Quadrant": "A", "StudyRing": "Outer", "CurrentPar": 65, "Notes": "Tree Occlusion Mid-Spots", "DisplayName": "Hall Library Lot"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615158, 33.19992], [-96.615157, 33.199991], [-96.615126, 33.19999], [-96.615121, 33.200232], [-96.615236, 33.200232], [-96.615234, 33.200335], [-96.615419, 33.200338], [-96.615418, 33.20047], [-96.61574, 33.200468], [-96.615739, 33.199924], [-96.615158, 33.19992]]]}}, {"type": "Feature", "properties": {"LotName": "Municipal Court Lots", "LotOwner": "City of McKinney", "LotType": "public off-street", "Quadrant": "D", "StudyRing": "Mid", "CurrentPar": 10, "Notes": "Tree Occlusion Northern Dumpster Spot", "DisplayName": "Municipal Court Lots"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.61416, 33.196577], [-96.614139, 33.196047], [-96.614089, 33.196045], [-96.614068, 33.19648], [-96.613791, 33.196517], [-96.613795, 33.196568], [-96.614076, 33.196575], [-96.61416, 33.196577]]]}}, {"type": "Feature", "properties": {"LotName": "Davis at the Square", "LotOwner": "", "LotType": "parking garage", "Quadrant": "D", "StudyRing": "Outer", "CurrentPar": 98, "Notes": "Parking Structure", "DisplayName": "Davis at the Square"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.613951, 33.194935], [-96.613955, 33.195679], [-96.614369, 33.195677], [-96.614367, 33.195287], [-96.614365, 33.194933], [-96.613951, 33.194935]]]}}, {"type": "Feature", "properties": {"LotName": "City Lot #1", "LotOwner": "City of McKinney", "LotType": "public off-street", "Quadrant": "B", "StudyRing": "Outer", "CurrentPar": 103, "Notes": "", "DisplayName": "City Lot #1"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.614158, 33.19931], [-96.613511, 33.199305], [-96.613506, 33.199842], [-96.614154, 33.199846], [-96.614158, 33.19931]]]}}, {"type": "Feature", "properties": {"LotName": "Water Tower Lot", "LotOwner": "City of McKinney", "LotType": "public off-street", "Quadrant": "D", "StudyRing": "Outer", "CurrentPar": 21, "Notes": "Tree Occlusion", "DisplayName": "Water Tower Lot"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.61261, 33.196511], [-96.613098, 33.196509], [-96.613098, 33.196434], [-96.613127, 33.196434], [-96.613126, 33.196252], [-96.613003, 33.196253], [-96.613004, 33.196387], [-96.612743, 33.196388], [-96.612742, 33.196033], [-96.612717, 33.196033], [-96.612697, 33.196034], [-96.612612, 33.196034], [-96.612609, 33.196213], [-96.61261, 33.196511]]]}}, {"type": "Feature", "properties": {"LotName": "Playful Corp.", "LotOwner": "", "LotType": "public off-street", "Quadrant": "D", "StudyRing": "Outer", "CurrentPar": 125, "Notes": "", "DisplayName": "Playful Corp."}, "geometry": {"type": "Polygon", "coordinates": [[[-96.612699, 33.194807], [-96.612702, 33.195357], [-96.613313, 33.195355], [-96.61331, 33.194674], [-96.612809, 33.194676], [-96.61281, 33.194807], [-96.612699, 33.194807]]]}}, {"type": "Feature", "properties": {"LotName": "Lot H - North", "LotOwner": "", "LotType": "public off-street", "Quadrant": "A", "StudyRing": "Outer", "CurrentPar": 43, "Notes": "Tree Occlusion Southern Row", "DisplayName": "Lot H - North"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615938, 33.200287], [-96.615938, 33.200463], [-96.616592, 33.200465], [-96.616592, 33.200288], [-96.615938, 33.200287]]]}}, {"type": "Feature", "properties": {"LotName": "Chestnut Garage", "LotOwner": "City of McKinney", "LotType": "parking garage", "Quadrant": "B", "StudyRing": "Outer", "CurrentPar": 312, "Notes": "Parking Structure", "DisplayName": "Chestnut Garage"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.612582, 33.19829], [-96.612579, 33.198592], [-96.613392, 33.198597], [-96.613394, 33.198295], [-96.612582, 33.19829]]]}}, {"type": "Feature", "properties": {"LotName": "Lot H - South", "LotOwner": "", "LotType": "public off-street", "Quadrant": "A", "StudyRing": "Outer", "CurrentPar": 40, "Notes": "", "DisplayName": "Lot H - South"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615952, 33.199954], [-96.615952, 33.200124], [-96.616561, 33.200125], [-96.616562, 33.199961], [-96.616562, 33.199955], [-96.615952, 33.199954]]]}}, {"type": "Feature", "properties": {"LotName": "Wysong - Lot C North", "LotOwner": "", "LotType": "public off-street", "Quadrant": "B", "StudyRing": "Outer", "CurrentPar": 19, "Notes": "", "DisplayName": "Wysong - Lot C North"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.612956, 33.199719], [-96.612957, 33.199871], [-96.613156, 33.199873], [-96.613369, 33.199874], [-96.61337, 33.199721], [-96.612956, 33.199719]]]}}, {"type": "Feature", "properties": {"LotName": "Wysong - Lot C South", "LotOwner": "", "LotType": "public off-street", "Quadrant": "B", "StudyRing": "Outer", "CurrentPar": 9, "Notes": "Temporary Construction Site", "DisplayName": "Wysong - Lot C South"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.612954, 33.199361], [-96.612956, 33.199639], [-96.613395, 33.199642], [-96.613397, 33.199364], [-96.612954, 33.199361]]]}}, {"type": "Feature", "properties": {"LotName": "Lot 1 South", "LotOwner": "City of McKinney", "LotType": "public off-street", "Quadrant": "B", "StudyRing": "Outer", "CurrentPar": 48, "Notes": "Tree Occlusion Periphery", "DisplayName": "Lot 1 South"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.614284, 33.199326], [-96.614282, 33.199535], [-96.614886, 33.199539], [-96.614888, 33.199329], [-96.614284, 33.199326]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Inner", "CurrentPar": 11, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Inner \\u00b7 seg 1"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615162, 33.197454], [-96.615102, 33.197423], [-96.615107, 33.197781], [-96.615165, 33.197805], [-96.615162, 33.197454]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Inner", "CurrentPar": 11, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Inner \\u00b7 seg 2"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615249, 33.197818], [-96.615214, 33.197865], [-96.615619, 33.197868], [-96.615638, 33.19782], [-96.615249, 33.197818]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Inner", "CurrentPar": 12, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Inner \\u00b7 seg 3"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615717, 33.197788], [-96.615719, 33.197423], [-96.615662, 33.197397], [-96.615661, 33.197764], [-96.615717, 33.197788]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Inner", "CurrentPar": 11, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Inner \\u00b7 seg 4"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.61558, 33.197383], [-96.615611, 33.197334], [-96.615209, 33.197335], [-96.615188, 33.197382], [-96.61558, 33.197383]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Inner", "CurrentPar": 6, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Inner \\u00b7 seg 5"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615803, 33.197423], [-96.615803, 33.197855], [-96.615837, 33.197854], [-96.615835, 33.197422], [-96.615803, 33.197423]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Inner", "CurrentPar": 7, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Inner \\u00b7 seg 6"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615971, 33.197927], [-96.616466, 33.197926], [-96.616465, 33.197897], [-96.615973, 33.1979], [-96.615971, 33.197927]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Inner", "CurrentPar": 8, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Inner \\u00b7 seg 7"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.61608, 33.197271], [-96.615999, 33.197271], [-96.615999, 33.197299], [-96.616364, 33.197296], [-96.616364, 33.197269], [-96.61608, 33.197271]]]}}, {"type": "Feature", "properties": {"LotName": "Louisiana 19-S", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Mid", "CurrentPar": 4, "Notes": "", "DisplayName": "Louisiana 19-S"}, "geometry": {"type": "MultiPolygon", "coordinates": [[[[-96.616725, 33.197267], [-96.616725, 33.197295], [-96.616951, 33.197295], [-96.616951, 33.197282], [-96.616952, 33.197267], [-96.616725, 33.197267]]], [[[-96.617033, 33.197264], [-96.617032, 33.197291], [-96.617105, 33.197293], [-96.617105, 33.197265], [-96.617033, 33.197264]]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Outer", "CurrentPar": 6, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Outer \\u00b7 seg 1"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.617617, 33.197262], [-96.617617, 33.197264], [-96.617617, 33.197289], [-96.618034, 33.197294], [-96.618034, 33.197266], [-96.617617, 33.197262]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Outer", "CurrentPar": 6, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Outer \\u00b7 seg 2"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.618382, 33.197966], [-96.618381, 33.197993], [-96.618773, 33.19799], [-96.618773, 33.197962], [-96.618382, 33.197966]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Mid", "CurrentPar": 7, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Mid \\u00b7 seg 1"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.616723, 33.197982], [-96.616723, 33.19801], [-96.617219, 33.198002], [-96.617221, 33.198002], [-96.617221, 33.197974], [-96.616723, 33.197982]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Mid", "CurrentPar": 9, "Notes": "Building Occlusion Southern Spots", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Mid \\u00b7 seg 2"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.616658, 33.19809], [-96.616652, 33.198554], [-96.616685, 33.198554], [-96.616691, 33.198099], [-96.616691, 33.19809], [-96.616658, 33.19809]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Inner", "CurrentPar": 7, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Inner \\u00b7 seg 8"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615871, 33.198069], [-96.615872, 33.198496], [-96.615904, 33.198496], [-96.615903, 33.198069], [-96.615871, 33.198069]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Inner", "CurrentPar": 8, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Inner \\u00b7 seg 9"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615968, 33.197986], [-96.615969, 33.198016], [-96.616541, 33.198012], [-96.61654, 33.197987], [-96.615968, 33.197986]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Inner", "CurrentPar": 13, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Inner \\u00b7 seg 10"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615197, 33.197994], [-96.615638, 33.197992], [-96.615622, 33.197939], [-96.615162, 33.197939], [-96.615197, 33.197994]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Inner", "CurrentPar": 7, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Inner \\u00b7 seg 11"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615776, 33.198069], [-96.615778, 33.198496], [-96.61581, 33.198496], [-96.615808, 33.198068], [-96.615776, 33.198069]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Inner", "CurrentPar": 5, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Inner \\u00b7 seg 12"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.61503, 33.198351], [-96.615053, 33.198351], [-96.615053, 33.19806], [-96.61502, 33.198059], [-96.61502, 33.198351], [-96.61503, 33.198351], [-96.61503, 33.198351]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Mid", "CurrentPar": 7, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Mid \\u00b7 seg 3"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615867, 33.199152], [-96.6159, 33.199152], [-96.615902, 33.198712], [-96.615872, 33.198711], [-96.615872, 33.198712], [-96.61587, 33.198712], [-96.615867, 33.199152]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Outer", "CurrentPar": 4, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Outer \\u00b7 seg 3"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.617385, 33.198283], [-96.617386, 33.198574], [-96.617389, 33.198574], [-96.617418, 33.198573], [-96.617418, 33.198282], [-96.617385, 33.198283]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Outer", "CurrentPar": 10, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Outer \\u00b7 seg 4"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.618113, 33.199532], [-96.618088, 33.199545], [-96.618087, 33.19958], [-96.618077, 33.199858], [-96.61811, 33.19986], [-96.618121, 33.199546], [-96.618121, 33.199527], [-96.618113, 33.199532]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Outer", "CurrentPar": 7, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Outer \\u00b7 seg 5"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615902, 33.199385], [-96.61587, 33.199385], [-96.615868, 33.199813], [-96.6159, 33.199813], [-96.615902, 33.199385]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Outer", "CurrentPar": 13, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Outer \\u00b7 seg 6"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615011, 33.199361], [-96.615011, 33.200214], [-96.615019, 33.200214], [-96.615043, 33.200214], [-96.615044, 33.199362], [-96.615011, 33.199361]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Outer", "CurrentPar": 4, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Outer \\u00b7 seg 7"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615783, 33.199715], [-96.615815, 33.199715], [-96.615812, 33.199383], [-96.61581, 33.199383], [-96.61581, 33.199382], [-96.615779, 33.199383], [-96.615783, 33.199715]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Outer", "CurrentPar": 3, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Outer \\u00b7 seg 8"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615903, 33.200106], [-96.61587, 33.200106], [-96.61587, 33.200287], [-96.615903, 33.200287], [-96.615903, 33.200106]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "B", "StudyRing": "Inner", "CurrentPar": 13, "Notes": "", "DisplayName": "On-street \\u2014 Zone B \\u00b7 Inner \\u00b7 seg 1"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.614959, 33.197819], [-96.61502, 33.197792], [-96.615018, 33.197395], [-96.614961, 33.197417], [-96.614959, 33.197819]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "B", "StudyRing": "Inner", "CurrentPar": 6, "Notes": "", "DisplayName": "On-street \\u2014 Zone B \\u00b7 Inner \\u00b7 seg 2"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.614329, 33.19728], [-96.614328, 33.197307], [-96.614754, 33.197306], [-96.614754, 33.197278], [-96.614329, 33.19728]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "B", "StudyRing": "Inner", "CurrentPar": 6, "Notes": "", "DisplayName": "On-street \\u2014 Zone B \\u00b7 Inner \\u00b7 seg 3"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.614426, 33.197943], [-96.614859, 33.197941], [-96.61486, 33.197914], [-96.614426, 33.197916], [-96.614425, 33.197938], [-96.614426, 33.197938], [-96.614426, 33.197943]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "B", "StudyRing": "Mid", "CurrentPar": 3, "Notes": "", "DisplayName": "On-street \\u2014 Zone B \\u00b7 Mid \\u00b7 seg 1"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.613863, 33.197942], [-96.614079, 33.197942], [-96.614079, 33.197941], [-96.61408, 33.197941], [-96.614079, 33.197915], [-96.613863, 33.197914], [-96.613863, 33.19794], [-96.613863, 33.19794], [-96.613863, 33.197942]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "B", "StudyRing": "Mid", "CurrentPar": 7, "Notes": "", "DisplayName": "On-street \\u2014 Zone B \\u00b7 Mid \\u00b7 seg 2"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.613597, 33.197276], [-96.613597, 33.197304], [-96.614096, 33.197308], [-96.614097, 33.197283], [-96.614096, 33.197283], [-96.614096, 33.19728], [-96.613597, 33.197276]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "B", "StudyRing": "Outer", "CurrentPar": 8, "Notes": "Tree Occlusion Easternmost Spot", "DisplayName": "On-street \\u2014 Zone B \\u00b7 Outer \\u00b7 seg 1"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.612613, 33.197273], [-96.612613, 33.1973], [-96.613306, 33.197304], [-96.613307, 33.197276], [-96.612613, 33.197273]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "B", "StudyRing": "Outer", "CurrentPar": 8, "Notes": "", "DisplayName": "On-street \\u2014 Zone B \\u00b7 Outer \\u00b7 seg 2"}, "geometry": {"type": "MultiPolygon", "coordinates": [[[[-96.612697, 33.197941], [-96.613025, 33.197942], [-96.613026, 33.197914], [-96.612698, 33.197913], [-96.612697, 33.197941]]], [[[-96.613098, 33.197914], [-96.613097, 33.197942], [-96.613311, 33.197942], [-96.613312, 33.197915], [-96.613098, 33.197914]]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "B", "StudyRing": "Outer", "CurrentPar": 7, "Notes": "", "DisplayName": "On-street \\u2014 Zone B \\u00b7 Outer \\u00b7 seg 3"}, "geometry": {"type": "MultiPolygon", "coordinates": [[[[-96.612607, 33.197991], [-96.612607, 33.198017], [-96.6129, 33.198018], [-96.612901, 33.197994], [-96.6129, 33.197994], [-96.6129, 33.197991], [-96.612607, 33.197991]]], [[[-96.613083, 33.198019], [-96.613312, 33.198019], [-96.613313, 33.197992], [-96.613084, 33.197991], [-96.613083, 33.198019]]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "B", "StudyRing": "Mid", "CurrentPar": 4, "Notes": "", "DisplayName": "On-street \\u2014 Zone B \\u00b7 Mid \\u00b7 seg 3"}, "geometry": {"type": "MultiPolygon", "coordinates": [[[[-96.613609, 33.19799], [-96.613609, 33.197996], [-96.613607, 33.197996], [-96.613609, 33.198018], [-96.613836, 33.19802], [-96.613836, 33.197992], [-96.613609, 33.19799]]], [[[-96.614022, 33.198001], [-96.614021, 33.198001], [-96.614022, 33.198021], [-96.614097, 33.198022], [-96.614098, 33.198002], [-96.614097, 33.198002], [-96.614098, 33.197994], [-96.614022, 33.197994], [-96.614022, 33.198001]]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "B", "StudyRing": "Inner", "CurrentPar": 6, "Notes": "", "DisplayName": "On-street \\u2014 Zone B \\u00b7 Inner \\u00b7 seg 4"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.614432, 33.197991], [-96.614431, 33.198018], [-96.614861, 33.19802], [-96.614861, 33.197996], [-96.614861, 33.197996], [-96.614861, 33.197992], [-96.614432, 33.197991]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "B", "StudyRing": "Inner", "CurrentPar": 8, "Notes": "", "DisplayName": "On-street \\u2014 Zone B \\u00b7 Inner \\u00b7 seg 5"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.614926, 33.198066], [-96.614924, 33.198513], [-96.614946, 33.198514], [-96.614946, 33.198513], [-96.614957, 33.198513], [-96.614959, 33.198066], [-96.614926, 33.198066]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "B", "StudyRing": "Outer", "CurrentPar": 3, "Notes": "", "DisplayName": "On-street \\u2014 Zone B \\u00b7 Outer \\u00b7 seg 4"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.614958, 33.199366], [-96.614926, 33.199366], [-96.614927, 33.19954], [-96.61495, 33.19954], [-96.61496, 33.19954], [-96.614958, 33.199366]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "B", "StudyRing": "Outer", "CurrentPar": 7, "Notes": "", "DisplayName": "On-street \\u2014 Zone B \\u00b7 Outer \\u00b7 seg 5"}, "geometry": {"type": "MultiPolygon", "coordinates": [[[[-96.614926, 33.199659], [-96.614926, 33.199964], [-96.614961, 33.199965], [-96.614959, 33.19966], [-96.614926, 33.199659]]], [[[-96.61493, 33.200087], [-96.614928, 33.200197], [-96.614927, 33.200213], [-96.61496, 33.200213], [-96.614963, 33.200087], [-96.61493, 33.200087]]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "C", "StudyRing": "Inner", "CurrentPar": 13, "Notes": "", "DisplayName": "On-street \\u2014 Zone C \\u00b7 Inner \\u00b7 seg 1"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615653, 33.197256], [-96.615612, 33.197201], [-96.61514, 33.197203], [-96.615185, 33.197256], [-96.615653, 33.197256]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "C", "StudyRing": "Inner", "CurrentPar": 6, "Notes": "", "DisplayName": "On-street \\u2014 Zone C \\u00b7 Inner \\u00b7 seg 2"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.6158, 33.196742], [-96.615772, 33.196742], [-96.615778, 33.197104], [-96.615779, 33.197111], [-96.615811, 33.19711], [-96.615804, 33.196742], [-96.6158, 33.196742]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "C", "StudyRing": "Inner", "CurrentPar": 7, "Notes": "", "DisplayName": "On-street \\u2014 Zone C \\u00b7 Inner \\u00b7 seg 3"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615065, 33.197121], [-96.615063, 33.196662], [-96.615029, 33.196661], [-96.615032, 33.197121], [-96.615065, 33.197121]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "C", "StudyRing": "Inner", "CurrentPar": 7, "Notes": "Tree Occlusion Eastern Spot", "DisplayName": "On-street \\u2014 Zone C \\u00b7 Inner \\u00b7 seg 4"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.61602, 33.197186], [-96.61602, 33.197194], [-96.616019, 33.197204], [-96.616019, 33.197213], [-96.616493, 33.197209], [-96.616494, 33.197181], [-96.61602, 33.197186]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "C", "StudyRing": "Inner", "CurrentPar": 6, "Notes": "", "DisplayName": "On-street \\u2014 Zone C \\u00b7 Inner \\u00b7 seg 5"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615871, 33.196744], [-96.615872, 33.197106], [-96.615905, 33.197106], [-96.615905, 33.197102], [-96.615904, 33.196748], [-96.615904, 33.196744], [-96.615871, 33.196744]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "C", "StudyRing": "Mid", "CurrentPar": 4, "Notes": "", "DisplayName": "On-street \\u2014 Zone C \\u00b7 Mid \\u00b7 seg 1"}, "geometry": {"type": "MultiPolygon", "coordinates": [[[[-96.616989, 33.197179], [-96.616988, 33.197207], [-96.617205, 33.197206], [-96.617205, 33.197178], [-96.616989, 33.197179]]], [[[-96.616713, 33.197181], [-96.616712, 33.197208], [-96.616799, 33.197208], [-96.616798, 33.197181], [-96.616713, 33.197181]]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "C", "StudyRing": "Outer", "CurrentPar": 5, "Notes": "", "DisplayName": "On-street \\u2014 Zone C \\u00b7 Outer \\u00b7 seg 1"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.617622, 33.197169], [-96.617622, 33.197196], [-96.617838, 33.197198], [-96.617838, 33.19717], [-96.617622, 33.197169]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "C", "StudyRing": "Outer", "CurrentPar": 5, "Notes": "", "DisplayName": "On-street \\u2014 Zone C \\u00b7 Outer \\u00b7 seg 2"}, "geometry": {"type": "MultiPolygon", "coordinates": [[[[-96.617392, 33.196923], [-96.617391, 33.197137], [-96.617424, 33.197138], [-96.617424, 33.196923], [-96.617392, 33.196923]]], [[[-96.617394, 33.196608], [-96.617393, 33.196718], [-96.617405, 33.196719], [-96.617425, 33.196719], [-96.617427, 33.196608], [-96.617406, 33.196608], [-96.617397, 33.196608], [-96.617394, 33.196608]]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "C", "StudyRing": "Outer", "CurrentPar": 8, "Notes": "", "DisplayName": "On-street \\u2014 Zone C \\u00b7 Outer \\u00b7 seg 3"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.617401, 33.196], [-96.617398, 33.196], [-96.617395, 33.196517], [-96.617397, 33.196517], [-96.617427, 33.196518], [-96.617431, 33.196], [-96.617401, 33.196]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "C", "StudyRing": "Mid", "CurrentPar": 6, "Notes": "", "DisplayName": "On-street \\u2014 Zone C \\u00b7 Mid \\u00b7 seg 2"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.61581, 33.196126], [-96.615801, 33.196189], [-96.615794, 33.196248], [-96.61579, 33.196275], [-96.615785, 33.196308], [-96.615778, 33.196371], [-96.615778, 33.196488], [-96.615778, 33.196507], [-96.615811, 33.196506], [-96.615811, 33.196487], [-96.615809, 33.19636], [-96.615822, 33.196279], [-96.615843, 33.196126], [-96.61581, 33.196126]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "C", "StudyRing": "Mid", "CurrentPar": 3, "Notes": "", "DisplayName": "On-street \\u2014 Zone C \\u00b7 Mid \\u00b7 seg 3"}, "geometry": {"type": "MultiPolygon", "coordinates": [[[[-96.615028, 33.196072], [-96.615028, 33.196072], [-96.615022, 33.196072], [-96.615022, 33.196194], [-96.615055, 33.196194], [-96.615055, 33.196072], [-96.615028, 33.196072]]], [[[-96.615022, 33.196346], [-96.615023, 33.196402], [-96.615032, 33.196402], [-96.615056, 33.196402], [-96.615055, 33.196346], [-96.615022, 33.196346]]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "C", "StudyRing": "Outer", "CurrentPar": 6, "Notes": "", "DisplayName": "On-street \\u2014 Zone C \\u00b7 Outer \\u00b7 seg 4"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615769, 33.195361], [-96.615768, 33.195811], [-96.6158, 33.195811], [-96.615802, 33.195361], [-96.615769, 33.195361]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "C", "StudyRing": "Outer", "CurrentPar": 8, "Notes": "", "DisplayName": "On-street \\u2014 Zone C \\u00b7 Outer \\u00b7 seg 5"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.616678, 33.195931], [-96.616678, 33.195938], [-96.617308, 33.195935], [-96.617308, 33.195908], [-96.616678, 33.195911], [-96.616678, 33.195931]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "C", "StudyRing": "Outer", "CurrentPar": 8, "Notes": "", "DisplayName": "On-street \\u2014 Zone C \\u00b7 Outer \\u00b7 seg 6"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.617492, 33.195896], [-96.617491, 33.195921], [-96.617491, 33.195923], [-96.61806, 33.195916], [-96.61806, 33.195906], [-96.61806, 33.195906], [-96.61806, 33.195891], [-96.61806, 33.195891], [-96.61806, 33.195889], [-96.617492, 33.195896]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "C", "StudyRing": "Outer", "CurrentPar": 8, "Notes": "", "DisplayName": "On-street \\u2014 Zone C \\u00b7 Outer \\u00b7 seg 7"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.617421, 33.19541], [-96.617422, 33.195855], [-96.617455, 33.195855], [-96.617453, 33.19541], [-96.617421, 33.19541]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "C", "StudyRing": "Outer", "CurrentPar": 10, "Notes": "", "DisplayName": "On-street \\u2014 Zone C \\u00b7 Outer \\u00b7 seg 8"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615803, 33.194569], [-96.615794, 33.195279], [-96.615813, 33.19528], [-96.615813, 33.19528], [-96.615827, 33.19528], [-96.615835, 33.19457], [-96.615803, 33.194569]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "D", "StudyRing": "Inner", "CurrentPar": 7, "Notes": "", "DisplayName": "On-street \\u2014 Zone D \\u00b7 Inner \\u00b7 seg 1"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.614329, 33.197196], [-96.614329, 33.197223], [-96.614832, 33.197222], [-96.614833, 33.197195], [-96.614329, 33.197196]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "D", "StudyRing": "Inner", "CurrentPar": 7, "Notes": "Tree Occlusion Northern Spot", "DisplayName": "On-street \\u2014 Zone D \\u00b7 Inner \\u00b7 seg 2"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.61492, 33.196704], [-96.614924, 33.197107], [-96.614957, 33.197107], [-96.614957, 33.197107], [-96.614953, 33.196704], [-96.614953, 33.196704], [-96.61492, 33.196704]]]}}, {"type": "Feature", "properties": {"LotName": "Lot 5", "LotOwner": "", "LotType": "public off-street", "Quadrant": "D", "StudyRing": "Mid", "CurrentPar": 17, "Notes": "", "DisplayName": "Lot 5"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.614157, 33.196675], [-96.614156, 33.196623], [-96.613527, 33.196621], [-96.613526, 33.196669], [-96.614157, 33.196675]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "D", "StudyRing": "Mid", "CurrentPar": 7, "Notes": "", "DisplayName": "On-street \\u2014 Zone D \\u00b7 Mid \\u00b7 seg 1"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.614026, 33.197199], [-96.613588, 33.1972], [-96.613588, 33.197228], [-96.614093, 33.197226], [-96.614094, 33.197198], [-96.614026, 33.197199]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "D", "StudyRing": "Outer", "CurrentPar": 8, "Notes": "", "DisplayName": "On-street \\u2014 Zone D \\u00b7 Outer \\u00b7 seg 1"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.612628, 33.197229], [-96.613304, 33.197226], [-96.613304, 33.197198], [-96.612628, 33.197201], [-96.612628, 33.197229]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "public off-street", "Quadrant": "D", "StudyRing": "Outer", "CurrentPar": 9, "Notes": "Under Construction 2019", "DisplayName": "Public lot \\u2014 Zone D \\u00b7 Outer (unnamed)"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.613032, 33.196521], [-96.613032, 33.19657], [-96.61326, 33.196569], [-96.6133, 33.196569], [-96.61333, 33.196569], [-96.61333, 33.19652], [-96.613032, 33.196521]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "D", "StudyRing": "Mid", "CurrentPar": 7, "Notes": "", "DisplayName": "On-street \\u2014 Zone D \\u00b7 Mid \\u00b7 seg 2"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.613574, 33.195977], [-96.613574, 33.196005], [-96.614076, 33.195995], [-96.614076, 33.195967], [-96.613574, 33.195977]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "D", "StudyRing": "Mid", "CurrentPar": 4, "Notes": "", "DisplayName": "On-street \\u2014 Zone D \\u00b7 Mid \\u00b7 seg 3"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.614232, 33.19604], [-96.614195, 33.196038], [-96.614191, 33.196271], [-96.614225, 33.196268], [-96.614232, 33.19604]]]}}, {"type": "Feature", "properties": {"LotName": "Municipal Court Lot West", "LotOwner": "City of McKinney", "LotType": "public off-street", "Quadrant": "D", "StudyRing": "Mid", "CurrentPar": 27, "Notes": "Tree Occlusion North Spot Mid", "DisplayName": "Municipal Court Lot West"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.614196, 33.19657], [-96.614572, 33.196568], [-96.614567, 33.196286], [-96.614201, 33.196292], [-96.614196, 33.19657]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "D", "StudyRing": "Mid", "CurrentPar": 5, "Notes": "", "DisplayName": "On-street \\u2014 Zone D \\u00b7 Mid \\u00b7 seg 4"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.614833, 33.195991], [-96.614835, 33.195968], [-96.614398, 33.195972], [-96.614396, 33.195996], [-96.614833, 33.195991]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "D", "StudyRing": "Outer", "CurrentPar": 14, "Notes": "", "DisplayName": "On-street \\u2014 Zone D \\u00b7 Outer \\u00b7 seg 2"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615032, 33.194254], [-96.614969, 33.194247], [-96.614913, 33.194593], [-96.614982, 33.194599], [-96.615032, 33.194254]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "D", "StudyRing": "Outer", "CurrentPar": 17, "Notes": "", "DisplayName": "On-street \\u2014 Zone D \\u00b7 Outer \\u00b7 seg 3"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.614935, 33.195677], [-96.614954, 33.195063], [-96.614897, 33.195062], [-96.614882, 33.195671], [-96.614935, 33.195677]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "D", "StudyRing": "Outer", "CurrentPar": 4, "Notes": "", "DisplayName": "On-street \\u2014 Zone D \\u00b7 Outer \\u00b7 seg 4"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.613815, 33.195895], [-96.613815, 33.195923], [-96.61411, 33.19592], [-96.614109, 33.195892], [-96.613815, 33.195895]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "D", "StudyRing": "Outer", "CurrentPar": 12, "Notes": "", "DisplayName": "On-street \\u2014 Zone D \\u00b7 Outer \\u00b7 seg 5"}, "geometry": {"type": "MultiPolygon", "coordinates": [[[[-96.614792, 33.194689], [-96.614214, 33.194689], [-96.614197, 33.194713], [-96.614815, 33.194709], [-96.614792, 33.194689]]], [[[-96.613955, 33.194709], [-96.613924, 33.194688], [-96.613636, 33.194692], [-96.613615, 33.194714], [-96.613955, 33.194709]]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "D", "StudyRing": "Outer", "CurrentPar": 12, "Notes": "", "DisplayName": "On-street \\u2014 Zone D \\u00b7 Outer \\u00b7 seg 6"}, "geometry": {"type": "MultiPolygon", "coordinates": [[[[-96.614803, 33.194803], [-96.614821, 33.194784], [-96.614186, 33.194785], [-96.614231, 33.194807], [-96.614803, 33.194803]]], [[[-96.613616, 33.194788], [-96.613647, 33.194808], [-96.613931, 33.194809], [-96.613961, 33.194786], [-96.613616, 33.194788]]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "D", "StudyRing": "Outer", "CurrentPar": 5, "Notes": "Tree Occlusion Eastern Spots", "DisplayName": "On-street \\u2014 Zone D \\u00b7 Outer \\u00b7 seg 7"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.613991, 33.194133], [-96.614017, 33.194111], [-96.61361, 33.194097], [-96.613634, 33.194126], [-96.613991, 33.194133]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "D", "StudyRing": "Outer", "CurrentPar": 12, "Notes": "C1 is sharper, but with tree occlusion", "DisplayName": "On-street \\u2014 Zone D \\u00b7 Outer \\u00b7 seg 8"}, "geometry": {"type": "MultiPolygon", "coordinates": [[[[-96.613561, 33.194183], [-96.613497, 33.19418], [-96.613497, 33.194234], [-96.613557, 33.194236], [-96.613561, 33.194183]]], [[[-96.613556, 33.194256], [-96.613499, 33.194255], [-96.613499, 33.194304], [-96.613555, 33.194305], [-96.613556, 33.194256]]], [[[-96.613557, 33.194333], [-96.613502, 33.194332], [-96.613502, 33.194381], [-96.613557, 33.194381], [-96.613557, 33.194333]]], [[[-96.61355, 33.19448], [-96.613501, 33.194478], [-96.613501, 33.194528], [-96.613552, 33.194526], [-96.61355, 33.19448]]], [[[-96.613553, 33.194408], [-96.613504, 33.194406], [-96.613502, 33.194454], [-96.613552, 33.194456], [-96.613553, 33.194408]]], [[[-96.61355, 33.194553], [-96.613501, 33.194551], [-96.6135, 33.194596], [-96.61355, 33.194597], [-96.61355, 33.194553]]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "D", "StudyRing": "Outer", "CurrentPar": 9, "Notes": "", "DisplayName": "On-street \\u2014 Zone D \\u00b7 Outer \\u00b7 seg 9"}, "geometry": {"type": "MultiPolygon", "coordinates": [[[[-96.613479, 33.194919], [-96.613477, 33.195332], [-96.613507, 33.195306], [-96.613513, 33.194944], [-96.613479, 33.194919]]], [[[-96.613474, 33.195507], [-96.613478, 33.195742], [-96.613502, 33.195721], [-96.613505, 33.19553], [-96.613474, 33.195507]]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "D", "StudyRing": "Outer", "CurrentPar": 22, "Notes": "", "DisplayName": "On-street \\u2014 Zone D \\u00b7 Outer \\u00b7 seg 10"}, "geometry": {"type": "MultiPolygon", "coordinates": [[[[-96.613335, 33.194968], [-96.613336, 33.195242], [-96.613393, 33.195243], [-96.613394, 33.194967], [-96.613335, 33.194968]]], [[[-96.613343, 33.195519], [-96.613348, 33.195768], [-96.613393, 33.195769], [-96.613391, 33.195517], [-96.613343, 33.195519]]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "D", "StudyRing": "Outer", "CurrentPar": 4, "Notes": "Under Construction 2019", "DisplayName": "On-street \\u2014 Zone D \\u00b7 Outer \\u00b7 seg 11"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.612667, 33.196521], [-96.612667, 33.196549], [-96.612957, 33.196551], [-96.612956, 33.196523], [-96.612667, 33.196521]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "D", "StudyRing": "Outer", "CurrentPar": 8, "Notes": "", "DisplayName": "On-street \\u2014 Zone D \\u00b7 Outer \\u00b7 seg 12"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.613053, 33.195917], [-96.613051, 33.195868], [-96.612779, 33.195869], [-96.612783, 33.195922], [-96.613053, 33.195917]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "D", "StudyRing": "Mid", "CurrentPar": 7, "Notes": "", "DisplayName": "On-street \\u2014 Zone D \\u00b7 Mid \\u00b7 seg 5"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.614925, 33.196192], [-96.614927, 33.196497], [-96.614949, 33.1965], [-96.614949, 33.196497], [-96.61496, 33.196497], [-96.614958, 33.196192], [-96.614925, 33.196192]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "C", "StudyRing": "Mid", "CurrentPar": 4, "Notes": "", "DisplayName": "On-street \\u2014 Zone C \\u00b7 Mid \\u00b7 seg 4"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615877, 33.196394], [-96.615877, 33.196394], [-96.615871, 33.196394], [-96.615868, 33.196649], [-96.615872, 33.196649], [-96.615901, 33.196649], [-96.615904, 33.196394], [-96.615877, 33.196394]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "C", "StudyRing": "Outer", "CurrentPar": 6, "Notes": "", "DisplayName": "On-street \\u2014 Zone C \\u00b7 Outer \\u00b7 seg 9"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615884, 33.19536], [-96.61588, 33.195732], [-96.615884, 33.195732], [-96.615912, 33.195732], [-96.615916, 33.19536], [-96.615884, 33.19536]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "C", "StudyRing": "Outer", "CurrentPar": 10, "Notes": "", "DisplayName": "On-street \\u2014 Zone C \\u00b7 Outer \\u00b7 seg 10"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.615895, 33.194708], [-96.615863, 33.194708], [-96.615866, 33.195256], [-96.615898, 33.195256], [-96.615895, 33.194708]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Mid", "CurrentPar": 4, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Mid \\u00b7 seg 4"}, "geometry": {"type": "MultiPolygon", "coordinates": [[[[-96.61671, 33.197903], [-96.61671, 33.197931], [-96.616929, 33.197928], [-96.616929, 33.197904], [-96.616929, 33.197901], [-96.61671, 33.197903]]], [[[-96.617058, 33.1979], [-96.617058, 33.197927], [-96.617129, 33.197926], [-96.617129, 33.197899], [-96.617058, 33.1979]]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "A", "StudyRing": "Outer", "CurrentPar": 7, "Notes": "", "DisplayName": "On-street \\u2014 Zone A \\u00b7 Outer \\u00b7 seg 9"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.617391, 33.199158], [-96.61742, 33.199158], [-96.617419, 33.198663], [-96.617398, 33.198662], [-96.617386, 33.198662], [-96.617387, 33.199158], [-96.617391, 33.199158], [-96.617391, 33.199158]]]}}, {"type": "Feature", "properties": {"LotName": "", "LotOwner": "", "LotType": "on-street", "Quadrant": "D", "StudyRing": "Inner", "CurrentPar": 3, "Notes": "", "DisplayName": "On-street \\u2014 Zone D \\u00b7 Inner \\u00b7 seg 3"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.614604, 33.196634], [-96.614596, 33.196597], [-96.614437, 33.196597], [-96.61444, 33.196637], [-96.614604, 33.196634]]]}}, {"type": "Feature", "properties": {"LotName": "City Hall N", "LotOwner": "City of McKinney", "LotType": "public off-street", "Quadrant": "", "StudyRing": "", "CurrentPar": 103, "Notes": "", "DisplayName": "City Hall N"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.610303, 33.199562], [-96.610307, 33.199501], [-96.610377, 33.199498], [-96.610383, 33.199332], [-96.610305, 33.199329], [-96.610308, 33.199018], [-96.61017, 33.199014], [-96.610161, 33.199071], [-96.609984, 33.199063], [-96.609984, 33.198995], [-96.60963, 33.198999], [-96.609622, 33.199072], [-96.609557, 33.199073], [-96.609541, 33.199487], [-96.609613, 33.199494], [-96.609614, 33.199555], [-96.609974, 33.199558], [-96.609975, 33.199508], [-96.610149, 33.199511], [-96.610154, 33.199559], [-96.610303, 33.199562]]]}}, {"type": "Feature", "properties": {"LotName": "City Hall N", "LotOwner": "City of McKinney", "LotType": "on-street", "Quadrant": "", "StudyRing": "", "CurrentPar": 1, "Notes": "", "DisplayName": "City Hall N"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.610259, 33.199627], [-96.610262, 33.199602], [-96.610185, 33.199597], [-96.610185, 33.199626], [-96.610259, 33.199627]]]}}, {"type": "Feature", "properties": {"LotName": "City Hall N", "LotOwner": "City of McKinney", "LotType": "on-street", "Quadrant": "", "StudyRing": "", "CurrentPar": 5, "Notes": "", "DisplayName": "City Hall N"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.609951, 33.199617], [-96.609947, 33.199596], [-96.609582, 33.199592], [-96.609579, 33.199619], [-96.609951, 33.199617]]]}}, {"type": "Feature", "properties": {"LotName": "City Hall N", "LotOwner": "City of McKinney", "LotType": "on-street", "Quadrant": "", "StudyRing": "", "CurrentPar": 10, "Notes": "", "DisplayName": "City Hall N"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.60947, 33.199533], [-96.609504, 33.199533], [-96.609503, 33.199394], [-96.609488, 33.199292], [-96.609459, 33.199175], [-96.609419, 33.199048], [-96.609387, 33.199052], [-96.609424, 33.199168], [-96.609456, 33.199297], [-96.609473, 33.199393], [-96.609478, 33.199456], [-96.60947, 33.199533]]]}}, {"type": "Feature", "properties": {"LotName": "City Hall NE", "LotOwner": "City of McKinney", "LotType": "public off-street", "Quadrant": "", "StudyRing": "", "CurrentPar": 14, "Notes": "", "DisplayName": "City Hall NE"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.609236, 33.199258], [-96.609192, 33.199189], [-96.60876, 33.199195], [-96.608728, 33.19921], [-96.60875, 33.19925], [-96.609236, 33.199258]]]}}, {"type": "Feature", "properties": {"LotName": "City Hall E", "LotOwner": "City of McKinney", "LotType": "public off-street", "Quadrant": "", "StudyRing": "", "CurrentPar": 48, "Notes": "", "DisplayName": "City Hall E"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.609148, 33.199169], [-96.609149, 33.199127], [-96.609222, 33.199102], [-96.609162, 33.198879], [-96.609159, 33.198718], [-96.608956, 33.19871], [-96.60896, 33.198839], [-96.608988, 33.199003], [-96.609054, 33.199006], [-96.609045, 33.199047], [-96.609004, 33.199055], [-96.608896, 33.199049], [-96.60887, 33.199024], [-96.608868, 33.198998], [-96.608929, 33.198998], [-96.608942, 33.198711], [-96.608739, 33.198707], [-96.608727, 33.1991], [-96.608791, 33.199111], [-96.608793, 33.199165], [-96.609148, 33.199169]]]}}, {"type": "Feature", "properties": {"LotName": "City Hall SE", "LotOwner": "City of McKinney", "LotType": "public off-street", "Quadrant": "", "StudyRing": "", "CurrentPar": 52, "Notes": "", "DisplayName": "City Hall SE"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.608984, 33.198553], [-96.609116, 33.198567], [-96.609124, 33.198537], [-96.609183, 33.198542], [-96.609216, 33.198425], [-96.609236, 33.198426], [-96.609275, 33.198183], [-96.60919, 33.198189], [-96.609188, 33.198127], [-96.608865, 33.19812], [-96.608866, 33.19818], [-96.608766, 33.198181], [-96.608749, 33.198548], [-96.608945, 33.198553], [-96.608966, 33.198284], [-96.608904, 33.198278], [-96.608911, 33.198241], [-96.608963, 33.198235], [-96.609043, 33.198238], [-96.609095, 33.198244], [-96.609114, 33.198273], [-96.609107, 33.198289], [-96.60905, 33.198288], [-96.608984, 33.198553]]]}}, {"type": "Feature", "properties": {"LotName": "Tupps", "LotOwner": "Tupps", "LotType": "public off-street", "Quadrant": "", "StudyRing": "", "CurrentPar": 152, "Notes": "", "DisplayName": "Tupps"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.610319, 33.197093], [-96.610558, 33.197097], [-96.610668, 33.194574], [-96.610734, 33.194554], [-96.610751, 33.194229], [-96.61058, 33.194141], [-96.610366, 33.194164], [-96.610347, 33.195318], [-96.610323, 33.196794], [-96.610319, 33.197093]]]}}, {"type": "Feature", "properties": {"LotName": "Flour Mill", "LotOwner": "Flour Mill", "LotType": "public off-street", "Quadrant": "", "StudyRing": "", "CurrentPar": 30, "Notes": "", "DisplayName": "Flour Mill"}, "geometry": {"type": "Polygon", "coordinates": [[[-96.6106, 33.197811], [-96.610598, 33.197628], [-96.610595, 33.197334], [-96.610412, 33.197331], [-96.610412, 33.197353], [-96.610294, 33.197358], [-96.610283, 33.197897], [-96.61052, 33.197911], [-96.610527, 33.197808], [-96.6106, 33.197811]]]}}]}';
+let lotLayer = null;
+try {
+  const fc = JSON.parse(LOT_GEO);
+  lotLayer = L.geoJSON(fc, {
+    style: feat => {
+      const t = feat.properties.LotType;
+      if (t === "parking garage") return { color:"#6e4a1d", weight:1.4, fillColor:"#9a6a2f", fillOpacity:0.28 };
+      if (t === "public off-street") return { color:"#3f8a6f", weight:1.2, fillColor:"#1f6f54", fillOpacity:0.18 };
+      return { color:"#8a8674", weight:1, fillColor:"#b7b29c", fillOpacity:0.14, dashArray:"3,3" }; // on-street
+    },
+    onEachFeature: (feat, layer) => {
+      const p = feat.properties;
+      const nm = p.DisplayName || p.LotName || "Parking";
+      layer.bindTooltip(nm + (p.CurrentPar!=null ? " · " + p.CurrentPar + " spaces" : ""), { sticky:true });
+      // tapping a polygon selects the matching facility if one exists
+      layer.on("click", () => {
+        const match = FACILITIES.find(f => f.name === nm || f.name.replace(/ — /g," - ") === nm);
+        if (match) selectFacility(match.id);
+      });
+    }
   }).addTo(map);
-  m.on("click", () => selectLot(lot.id));
-  markers[lot.id] = m;
+} catch(e) { console.error("Lot overlay failed:", e); }
+
+function pinHtml(f, active) {
+  const fill = active ? C.signal : (f.category === "Garage" ? C.brass : "#b0823f");
+  const ring = active ? "#fff" : "rgba(255,255,255,0.85)";
+  return '<svg width="24" height="32" viewBox="0 0 26 34" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M13 0C5.8 0 0 5.6 0 12.6 0 22 13 34 13 34s13-12 13-21.4C26 5.6 20.2 0 13 0Z" fill="'+fill+'"/>' +
+    '<circle cx="13" cy="12.5" r="6.5" fill="'+ring+'"/></svg>';
+}
+
+FACILITIES.forEach(f => {
+  if (f.lat == null) return;
+  const m = L.marker([f.lat, f.lng], {
+    icon: L.divIcon({ className:"", html:pinHtml(f,false), iconSize:[24,32], iconAnchor:[12,32] })
+  }).addTo(map);
+  m.on("click", () => selectFacility(f.id));
+  markers[f.id] = m;
 });
 setTimeout(() => map.invalidateSize(), 200);
 
-// ── Lot selection ─────────────────────────────────────────────────
-function selectLot(id) {
-  selectedLot = id;
-  LOTS.forEach(lot => {
-    markers[lot.id].setIcon(L.divIcon({ className:"", html:pinHtml(lot, lot.id===id), iconSize:[26,34], iconAnchor:[13,34] }));
+function refreshPins() {
+  FACILITIES.forEach(f => {
+    if (!markers[f.id]) return;
+    markers[f.id].setIcon(L.divIcon({ className:"", html:pinHtml(f, f.id===selectedId), iconSize:[24,32], iconAnchor:[12,32] }));
   });
-  const lot = LOTS.find(l => l.id === id);
-  if (lot) map.panTo([lot.lat, lot.lng], { animate:true });
-  renderLots();
-  renderCapHint();
 }
 
-function renderLots() {
-  const wrap = document.getElementById("lotList");
-  wrap.innerHTML = "";
-  LOTS.forEach(lot => {
+// ── ROUND METADATA ──
+const rDate = document.getElementById("rDate");
+const rShift = document.getElementById("rShift");
+const rSurveyor = document.getElementById("rSurveyor");
+const rDay = document.getElementById("rDay");
+
+function updateDay() {
+  if (!rDate.value) { rDay.value = ""; return; }
+  const d = new Date(rDate.value + "T12:00:00");
+  rDay.value = d.toLocaleDateString(undefined, { weekday:"long" });
+}
+rDate.addEventListener("change", updateDay);
+(function initDate(){ rDate.value = new Date().toISOString().slice(0,10); updateDay(); })();
+
+function roundMeta() {
+  return { date:rDate.value, day:rDay.value, shift:rShift.value, surveyor:rSurveyor.value.trim() };
+}
+
+// ── FACILITY LIST ──
+const facSearch = document.getElementById("facSearch");
+const catFilter = document.getElementById("catFilter");
+facSearch.addEventListener("input", renderFacList);
+catFilter.addEventListener("change", renderFacList);
+
+function countedInRound(id) {
+  const m = roundMeta();
+  return records.some(r => r.facilityId === id && r.date === m.date && r.shift === m.shift);
+}
+
+function renderFacList() {
+  const q = facSearch.value.trim().toLowerCase();
+  const cat = catFilter.value;
+  const list = document.getElementById("facList");
+  const matches = FACILITIES.filter(f =>
+    (!cat || f.category === cat) &&
+    (!q || f.name.toLowerCase().includes(q) || (f.address||"").toLowerCase().includes(q))
+  );
+  list.innerHTML = "";
+  if (matches.length === 0) { list.innerHTML = '<div class="empty-list">No facilities match.</div>'; return; }
+  matches.forEach(f => {
+    const done = countedInRound(f.id);
     const btn = document.createElement("button");
-    btn.className = "lot-chip" + (lot.id === selectedLot ? " active" : "");
-    btn.innerHTML = '<span class="lot-name">'+lot.name+'</span><span class="lot-cap">'+lot.capacity+' spots</span>';
-    btn.onclick = () => selectLot(lot.id);
-    wrap.appendChild(btn);
+    btn.className = "fac-chip" + (f.id === selectedId ? " active" : "");
+    btn.innerHTML =
+      '<span class="fac-main"><span class="fac-name">'+f.name+'</span>' +
+      '<span class="fac-meta">'+f.category+' · '+f.capacity+' spaces'+(f.quadrant?' · '+f.quadrant+'/'+(f.ring||'—'):'')+'</span></span>' +
+      (done ? '<span class="counted-tag">✓ counted</span>' : '<span class="fac-cap">'+f.capacity+'</span>');
+    btn.onclick = () => selectFacility(f.id);
+    list.appendChild(btn);
   });
 }
 
-function renderCapHint() {
-  const lot = LOTS.find(l => l.id === selectedLot);
-  document.getElementById("capHint").textContent = lot ? " of " + lot.capacity : "";
+// ── COUNT PANEL ──
+function selectFacility(id) {
+  selectedId = id;
+  countMode = "occupied";
+  levelCounts = {};
+  window._notesDraft = "";
+  refreshPins();
+  renderFacList();
+  const f = fac(id);
+  if (f && f.lat != null) map.panTo([f.lat, f.lng], { animate:true });
+  renderCountPanel();
 }
 
-// ── Geolocation ───────────────────────────────────────────────────
+function currentCounted() {
+  const f = fac(selectedId);
+  return levelsFor(f).reduce((sum, lv) => sum + (parseInt(levelCounts[lv],10) || 0), 0);
+}
+
+function renderCountPanel() {
+  const panel = document.getElementById("countPanel");
+  const f = fac(selectedId);
+  if (!f) { panel.innerHTML = '<div class="pick-prompt">Pick a facility from the list or map to start a count.</div>'; return; }
+
+  const levels = levelsFor(f);
+  const counted = currentCounted();
+  const d = derive(f, countMode, counted);
+  const modeWord = countMode === "occupied" ? "occupied (cars present)" : "vacant (empty stalls)";
+
+  let html = '<div class="count-panel">';
+  html += '<div class="count-facility">'+f.name+'</div>';
+  html += '<div class="count-sub">'+f.category+' · capacity '+f.capacity+(f.address?' · '+f.address:'')+'</div>';
+
+  html += '<div class="mode-toggle">' +
+    '<button class="mode-btn '+(countMode==="occupied"?"on":"")+'" data-mode="occupied">Count occupied</button>' +
+    '<button class="mode-btn '+(countMode==="vacant"?"on":"")+'" data-mode="vacant">Count vacant</button>' +
+    '</div>';
+  html += '<div class="mode-hint">Tallying '+modeWord+'. Counting empties is faster when a facility is nearly full.</div>';
+
+  levels.forEach(lv => {
+    html += '<div class="level-row"><span class="level-name">'+lv+'</span>' +
+      '<input class="level-input" type="number" inputmode="numeric" min="0" data-level="'+lv.replace(/"/g,'&quot;')+'" value="'+(levelCounts[lv]||"")+'" placeholder="0" /></div>';
+  });
+
+  html += '<div class="derived">' +
+    '<div class="derived-item"><div class="derived-num" style="color:'+(d.pct>=85?C.alert:C.signal)+'">'+d.occupied+'</div><div class="derived-label">Occupied</div></div>' +
+    '<div class="derived-item"><div class="derived-num">'+d.vacant+'</div><div class="derived-label">Vacant</div></div>' +
+    '<div class="derived-item"><div class="derived-num" style="color:'+(d.pct>=85?C.alert:C.signalDim)+'">'+d.pct+'%</div><div class="derived-label">Occupied</div></div>' +
+    '</div>';
+  if (d.over) html += '<div class="over-flag">⚠ Tally exceeds capacity — value clamped to '+f.capacity+'. Check the count or capacity.</div>';
+
+  html += '<textarea class="notes-input" id="notesInput" placeholder="Notes (optional) — e.g. gate open, counted from street">'+(window._notesDraft||"")+'</textarea>';
+  html += '<button class="submit-btn" id="logBtn">Log '+f.name+'</button>';
+  html += '</div>';
+  panel.innerHTML = html;
+
+  panel.querySelectorAll(".mode-btn").forEach(b => {
+    b.onclick = () => { countMode = b.dataset.mode; renderCountPanel(); };
+  });
+  panel.querySelectorAll(".level-input").forEach(inp => {
+    inp.addEventListener("input", () => {
+      levelCounts[inp.dataset.level] = inp.value;
+      const cc = currentCounted();
+      const dd = derive(f, countMode, cc);
+      const nums = panel.querySelectorAll(".derived-num");
+      if (nums[0]) { nums[0].textContent = dd.occupied; nums[0].style.color = dd.pct>=85?C.alert:C.signal; }
+      if (nums[1]) nums[1].textContent = dd.vacant;
+      if (nums[2]) { nums[2].textContent = dd.pct+"%"; nums[2].style.color = dd.pct>=85?C.alert:C.signalDim; }
+    });
+  });
+  const notes = document.getElementById("notesInput");
+  if (notes) notes.addEventListener("input", () => { window._notesDraft = notes.value; });
+  document.getElementById("logBtn").onclick = logCount;
+}
+
+function logCount() {
+  const f = fac(selectedId);
+  if (!f) return;
+  const m = roundMeta();
+  if (!m.date) { flash("Set the survey date first.", "err"); return; }
+  if (!m.surveyor) { flash("Enter the surveyor's name in the round bar.", "err"); return; }
+
+  const levels = levelsFor(f);
+  const byLevel = levels.map(lv => ({ level:lv, count:parseInt(levelCounts[lv],10) || 0 }));
+  const counted = byLevel.reduce((s,l) => s + l.count, 0);
+  const d = derive(f, countMode, counted);
+  const notesEl = document.getElementById("notesInput");
+  const notes = notesEl ? notesEl.value.trim() : "";
+
+  const rec = {
+    id: Date.now()+"-"+Math.random().toString(36).slice(2,7),
+    date:m.date, day:m.day, shift:m.shift, surveyor:m.surveyor,
+    facilityId:f.id, facility:f.name, address:f.address, category:f.category,
+    lotType:f.lotType, quadrant:f.quadrant, ring:f.ring, capacity:f.capacity,
+    countMode, countedValue:counted, occupied:d.occupied, vacant:d.vacant,
+    percentOccupied:d.pct, byLevel, notes,
+    surveyLat: myLocation ? myLocation.lat : null,
+    surveyLng: myLocation ? myLocation.lng : null,
+  };
+
+  records = records.filter(r => !(r.facilityId===f.id && r.date===m.date && r.shift===m.shift));
+  records.unshift(rec);
+  persist();
+
+  levelCounts = {}; window._notesDraft = "";
+  flash("Logged "+f.name+" — "+d.occupied+"/"+f.capacity+" ("+d.pct+"%).");
+  selectedId = null;
+  refreshPins(); renderFacList(); renderCountPanel(); renderLog();
+}
+
+// ── GEOLOCATION ──
 document.getElementById("locBtn").onclick = function() {
   if (!navigator.geolocation) { flash("This device has no location support.", "err"); return; }
-  const btn = this;
-  btn.disabled = true; btn.textContent = "Locating…";
+  const btn = this; btn.disabled = true; btn.textContent = "Locating…";
   navigator.geolocation.getCurrentPosition(
     pos => {
       const { latitude, longitude } = pos.coords;
@@ -267,90 +514,116 @@ document.getElementById("locBtn").onclick = function() {
   );
 };
 
-// ── Submit ────────────────────────────────────────────────────────
-document.getElementById("submitBtn").onclick = function() {
-  const lot = LOTS.find(l => l.id === selectedLot);
-  if (!lot) { flash("Pick a lot first.", "err"); return; }
-  const input = document.getElementById("spotsInput");
-  const n = parseInt(input.value, 10);
-  if (isNaN(n) || n < 0) { flash("Enter how many spots are filled.", "err"); return; }
-  if (n > lot.capacity) { flash("That's above "+lot.name+"'s capacity of "+lot.capacity+".", "err"); return; }
-  surveys.unshift({
-    id: Date.now()+"-"+Math.random().toString(36).slice(2,7),
-    lotName: lot.name, capacity: lot.capacity, spotsFilled: n,
-    timestamp: new Date().toISOString(),
-    surveyLat: myLocation ? myLocation.lat : null,
-    surveyLng: myLocation ? myLocation.lng : null,
-  });
-  persist();
-  input.value = "";
-  flash("Logged "+n+"/"+lot.capacity+" at "+lot.name+".");
-  renderLog();
-};
+// ── ROUND LOG ──
+function currentRoundRecords() {
+  const m = roundMeta();
+  return records.filter(r => r.date === m.date && r.shift === m.shift)
+                .sort((a,b) => b.id.localeCompare(a.id));
+}
 
-// ── Today's log ───────────────────────────────────────────────────
-function fmtTime(iso) {
-  return new Date(iso).toLocaleString(undefined, { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" });
+function fmtTime(id) {
+  const ts = parseInt(id.split("-")[0], 10);
+  return new Date(ts).toLocaleString(undefined, { hour:"numeric", minute:"2-digit" });
 }
 
 function renderLog() {
-  const today = new Date().toDateString();
-  const todays = surveys.filter(s => new Date(s.timestamp).toDateString() === today);
-  document.getElementById("todayCount").textContent = todays.length;
+  const rows = currentRoundRecords();
+  document.getElementById("roundCount").textContent = rows.length;
   const area = document.getElementById("logArea");
-
-  if (todays.length === 0) {
-    area.innerHTML = '<div class="empty">No counts logged yet. Pick a lot, enter the filled spots, and log it.</div>';
+  if (rows.length === 0) {
+    area.innerHTML = '<div class="empty">No counts logged for this date + shift yet. Pick a facility, tally occupied or vacant, and log it.</div>';
     return;
   }
   area.innerHTML = "";
-  todays.forEach(s => {
-    const pct = Math.round((s.spotsFilled / s.capacity) * 100);
-    const hot = pct >= 85;
+  rows.forEach(r => {
+    const hot = r.percentOccupied >= 85;
     const row = document.createElement("div");
     row.className = "log-row";
+    const modeTag = r.countMode === "vacant" ? " · counted vacant" : "";
     row.innerHTML =
-      '<div class="log-bar-track"><div class="log-bar-fill" style="width:'+Math.min(pct,100)+'%;background:'+(hot?C.alert:C.signal)+'"></div></div>' +
-      '<div><div class="log-lot">'+s.lotName+'</div><div class="log-time">'+fmtTime(s.timestamp)+'</div></div>' +
+      '<div class="log-bar-track"><div class="log-bar-fill" style="width:'+Math.min(r.percentOccupied,100)+'%;background:'+(hot?C.alert:C.signal)+'"></div></div>' +
+      '<div><div class="log-lot">'+r.facility+'</div><div class="log-sub">'+r.category+' · '+fmtTime(r.id)+modeTag+(r.notes?' · '+r.notes:'')+'</div></div>' +
       '<div class="log-figures">' +
-        '<span class="log-count">'+s.spotsFilled+'<span class="log-cap">/'+s.capacity+'</span></span>' +
-        '<span class="log-pct" style="color:'+(hot?C.alert:C.signalDim)+'">'+pct+'%</span>' +
+        '<span class="log-count">'+r.occupied+'<span class="log-cap">/'+r.capacity+'</span></span>' +
+        '<span class="log-pct" style="color:'+(hot?C.alert:C.signalDim)+'">'+r.percentOccupied+'%</span>' +
         '<button class="del-btn" aria-label="Delete">×</button>' +
       '</div>';
     row.querySelector(".del-btn").onclick = () => {
-      surveys = surveys.filter(x => x.id !== s.id);
-      persist(); renderLog();
+      records = records.filter(x => x.id !== r.id);
+      persist(); renderFacList(); renderLog();
     };
     area.appendChild(row);
   });
 }
 
-// ── CSV export ────────────────────────────────────────────────────
-document.getElementById("exportBtn").onclick = function() {
-  if (surveys.length === 0) { flash("Nothing to export yet.", "err"); return; }
-  const headers = ["timestamp","lot_name","spots_filled","capacity","percent_full","survey_lat","survey_lng"];
-  const rows = surveys.map(s => [
-    s.timestamp, '"'+s.lotName.replace(/"/g,'""')+'"', s.spotsFilled, s.capacity,
-    Math.round((s.spotsFilled/s.capacity)*100), s.surveyLat ?? "", s.surveyLng ?? ""
-  ].join(","));
-  const csv = [headers.join(","), ...rows].join("\n");
-  const blob = new Blob([csv], { type:"text/csv;charset=utf-8;" });
+// ── EXPORTS (match handoff guide schema) ──
+function csvCell(v) {
+  if (v == null) return "";
+  const s = String(v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
+
+function exportSummary() {
+  if (records.length === 0) { flash("Nothing to export yet.", "err"); return; }
+  const headers = ["SurveyDate","Day","Shift","Surveyor","Facility","Address","Category","LotType","Quadrant","Ring","Capacity","CountMode","CountedValue","Occupied","Vacant","PercentOccupied","Notes"];
+  const lines = [headers.join(",")];
+  records.forEach(r => {
+    lines.push([r.date,r.day,r.shift,r.surveyor,r.facility,r.address,r.category,r.lotType,r.quadrant,r.ring,r.capacity,r.countMode,r.countedValue,r.occupied,r.vacant,r.percentOccupied,r.notes].map(csvCell).join(","));
+  });
+  download(lines.join("\r\n"), "parking_count_summary_"+stamp()+".csv", "text/csv");
+  flash("Exported summary — "+records.length+" rows.");
+}
+
+function exportLevels() {
+  if (records.length === 0) { flash("Nothing to export yet.", "err"); return; }
+  const headers = ["SurveyDate","Day","Shift","Surveyor","Facility","Address","LotType","Capacity","CountMode","Level","LevelCount"];
+  const lines = [headers.join(",")];
+  records.forEach(r => {
+    r.byLevel.forEach(lv => {
+      lines.push([r.date,r.day,r.shift,r.surveyor,r.facility,r.address,r.lotType,r.capacity,r.countMode,lv.level,lv.count].map(csvCell).join(","));
+    });
+  });
+  download(lines.join("\r\n"), "parking_count_by_level_"+stamp()+".csv", "text/csv");
+  flash("Exported by-level CSV.");
+}
+
+function exportJson() {
+  if (records.length === 0) { flash("Nothing to export yet.", "err"); return; }
+  const groups = {};
+  records.forEach(r => {
+    const key = r.date+"|"+r.shift+"|"+r.surveyor;
+    if (!groups[key]) groups[key] = { session:{ survey_date:r.date, day:r.day, shift:r.shift, surveyor:r.surveyor }, records:[] };
+    groups[key].records.push({
+      facility:r.facility, address:r.address, category:r.category, lot_type:r.lotType,
+      quadrant:r.quadrant, ring:r.ring, capacity:r.capacity, count_mode:r.countMode,
+      counted_value:r.countedValue, occupied:r.occupied, vacant:r.vacant,
+      percent_occupied:r.percentOccupied,
+      by_level:r.byLevel.map(l => ({ level:l.level, count:l.count })),
+      notes:r.notes
+    });
+  });
+  const out = { export_version:"1.0", generated:new Date().toISOString(), sessions:Object.values(groups) };
+  download(JSON.stringify(out, null, 2), "parking_count_"+stamp()+".json", "application/json");
+  flash("Exported JSON.");
+}
+
+function stamp() { return new Date().toISOString().slice(0,10); }
+function download(text, name, type) {
+  const blob = new Blob([text], { type:type+";charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url; a.download = "parking-survey-"+new Date().toISOString().slice(0,10)+".csv";
-  a.click(); URL.revokeObjectURL(url);
-  flash("Exported "+surveys.length+" record"+(surveys.length===1?"":"s")+".");
-};
-
-// ── Live clock ────────────────────────────────────────────────────
-function tickClock() {
-  document.getElementById("liveTime").textContent =
-    new Date().toLocaleString(undefined, { hour:"numeric", minute:"2-digit" });
+  a.href = url; a.download = name; a.click();
+  URL.revokeObjectURL(url);
 }
-setInterval(tickClock, 10000); tickClock();
 
-// ── Init ──────────────────────────────────────────────────────────
-renderLots();
+document.getElementById("exportSummary").onclick = exportSummary;
+document.getElementById("exportLevels").onclick = exportLevels;
+document.getElementById("exportJson").onclick = exportJson;
+
+[rDate, rShift, rSurveyor].forEach(el => el.addEventListener("change", () => { renderFacList(); renderLog(); }));
+
+renderFacList();
+renderCountPanel();
 renderLog();
 </script>
 </body>
