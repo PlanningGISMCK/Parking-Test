@@ -328,6 +328,7 @@ FACILITIES.forEach(f => {
   const m = L.marker([f.lat, f.lng], {
     icon: L.divIcon({ className:"", html:pinHtml(f,false), iconSize:[24,32], iconAnchor:[12,32] })
   }).addTo(map);
+  m.bindTooltip(f.name + " · " + f.capacity + " spaces", { direction:"top", offset:[0,-30] });
   m.on("click", () => selectFacility(f.id));
   markers[f.id] = m;
 });
@@ -401,8 +402,43 @@ function selectFacility(id) {
   refreshPins();
   renderFacList();
   const f = fac(id);
-  if (f && f.lat != null) map.panTo([f.lat, f.lng], { animate:true });
+  if (f) jumpMapTo(f);
+  scrollListTo(id);
   renderCountPanel();
+}
+
+// Scroll the facility list so the active chip is visible
+function scrollListTo(id) {
+  const list = document.getElementById("facList");
+  if (!list) return;
+  const active = list.querySelector(".fac-chip.active");
+  if (active && active.scrollIntoView) {
+    active.scrollIntoView({ block:"nearest", behavior:"smooth" });
+  }
+}
+
+// Move the map to a facility: pan to its pin, or fit to its
+// on-street segments (zones have no single point).
+function jumpMapTo(f) {
+  if (f.lat != null) {
+    map.setView([f.lat, f.lng], Math.max(map.getZoom(), 17), { animate:true });
+    if (markers[f.id]) markers[f.id].openTooltip && markers[f.id].openTooltip();
+    return;
+  }
+  // on-street zone: gather its segment polygons and fit bounds
+  if (f.category === "On-street" && lotLayer) {
+    const bounds = L.latLngBounds([]);
+    let found = false;
+    lotLayer.eachLayer(layer => {
+      const p = layer.feature && layer.feature.properties;
+      if (!p || p.LotType !== "on-street") return;
+      if ((p.Quadrant||"").trim() === f.quadrant && (p.StudyRing||"").trim() === f.ring) {
+        bounds.extend(layer.getBounds());
+        found = true;
+      }
+    });
+    if (found) map.fitBounds(bounds, { animate:true, padding:[40,40], maxZoom:18 });
+  }
 }
 
 function currentCounted() {
