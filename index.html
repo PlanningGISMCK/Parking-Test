@@ -166,6 +166,7 @@
           <option value="">All types</option>
           <option>Garage</option><option>Public lot</option>
           <option>On-street</option>
+          <option>Private lot</option>
         </select>
       </div>
       <div class="fac-list" id="facList"></div>
@@ -231,6 +232,10 @@ const FACILITIES = [
   { id:"os-d-inner", name:"On-street — Zone D · Inner · Ring 1", address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Inner", capacity:17, levels:null, lat:null, lng:null },
   { id:"os-d-mid", name:"On-street — Zone D · Mid · Ring 2", address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Mid", capacity:30, levels:null, lat:null, lng:null },
   { id:"os-d-outer", name:"On-street — Zone D · Outer · Ring 3", address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:123, levels:null, lat:null, lng:null },
+  { id:"surrey-house", name:"Surrey House", address:"", category:"Private lot", lotType:"private lot", quadrant:"C", ring:"Outer", capacity:27, levels:null, lat:33.194363, lng:-96.615369 },
+  { id:"dancewear-lot", name:"Dancewear Lot", address:"", category:"Private lot", lotType:"private lot", quadrant:"A", ring:"Mid", capacity:9, levels:null, lat:33.1984, lng:-96.6166 },
+  { id:"joses-hamms-lot", name:"Jose's / Hamm's Lot", address:"", category:"Private lot", lotType:"private lot", quadrant:"C", ring:"Outer", capacity:7, levels:null, lat:33.197042, lng:-96.618021 },
+  { id:"longhorn", name:"Longhorn", address:"", category:"Private lot", lotType:"private lot", quadrant:"C", ring:"Outer", capacity:6, levels:null, lat:33.1958, lng:-96.616096 },
 ];
 
 const CENTER = [33.1972, -96.6150];
@@ -295,9 +300,15 @@ try {
       const p = feat.properties;
       const nm = p.DisplayName || p.LotName || "Parking";
       layer.bindTooltip(nm + (p.CurrentPar!=null ? " · " + p.CurrentPar + " spaces" : ""), { sticky:true });
-      // tapping a polygon selects the matching facility if one exists
+      // tapping a polygon selects its facility — direct name match for lots,
+      // or the parent on-street zone (by quadrant + ring) for street segments.
       layer.on("click", () => {
-        const match = FACILITIES.find(f => f.name === nm || f.name.replace(/ — /g," - ") === nm);
+        let match = FACILITIES.find(f => f.name === nm || f.name.replace(/ — /g," - ") === nm);
+        if (!match && p.LotType === "on-street") {
+          const q = (p.Quadrant||"").trim();
+          const ring = (p.StudyRing||"").trim();
+          match = FACILITIES.find(f => f.category === "On-street" && f.quadrant === q && f.ring === ring);
+        }
         if (match) selectFacility(match.id);
       });
     }
