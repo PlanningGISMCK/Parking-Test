@@ -71,9 +71,13 @@
   .mode-btn.on { background:var(--brass); color:#fff; }
   .mode-hint { font-size:11px; color:var(--muted); margin:-8px 0 12px; }
 
-  .level-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .level-row { display:flex; align-items:center; gap:10px; margin-bottom:9px; }
   .level-name { flex:1; font-size:13px; font-weight:500; }
-  .level-input { width:84px; font-family:'Fraunces',Georgia,serif; font-size:20px; font-weight:600; padding:5px 9px; border:1px solid var(--line); border-radius:7px; text-align:right; background:var(--soft); color:var(--ink); outline:none; }
+  .stepper { display:flex; align-items:center; gap:0; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--soft); }
+  .step-btn { width:40px; height:40px; border:none; background:var(--panel); color:var(--brass-deep); font-size:22px; font-weight:600; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
+  .step-btn:active { background:var(--brass); color:#fff; }
+  .step-btn:disabled { opacity:.35; cursor:default; }
+  .level-input { width:62px; height:40px; font-family:'Fraunces',Georgia,serif; font-size:20px; font-weight:600; padding:0 4px; border:none; border-left:1px solid var(--line); border-right:1px solid var(--line); text-align:center; background:var(--soft); color:var(--ink); outline:none; }
   .level-input::-webkit-outer-spin-button,.level-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
   .level-input{-moz-appearance:textfield;}
 
@@ -416,8 +420,14 @@ function renderCountPanel() {
   html += '<div class="mode-hint">Tallying '+modeWord+'. Counting empties is faster when a facility is nearly full.</div>';
 
   levels.forEach(lv => {
+    const safe = lv.replace(/"/g,'&quot;');
+    const val = levelCounts[lv] || "";
     html += '<div class="level-row"><span class="level-name">'+lv+'</span>' +
-      '<input class="level-input" type="number" inputmode="numeric" min="0" data-level="'+lv.replace(/"/g,'&quot;')+'" value="'+(levelCounts[lv]||"")+'" placeholder="0" /></div>';
+      '<div class="stepper">' +
+        '<button class="step-btn step-minus" data-level="'+safe+'" aria-label="Decrease">−</button>' +
+        '<input class="level-input" type="number" inputmode="numeric" min="0" data-level="'+safe+'" value="'+val+'" placeholder="0" />' +
+        '<button class="step-btn step-plus" data-level="'+safe+'" aria-label="Increase">+</button>' +
+      '</div></div>';
   });
 
   html += '<div class="derived">' +
@@ -435,17 +445,42 @@ function renderCountPanel() {
   panel.querySelectorAll(".mode-btn").forEach(b => {
     b.onclick = () => { countMode = b.dataset.mode; renderCountPanel(); };
   });
+  function refreshDerived() {
+    const cc = currentCounted();
+    const dd = derive(f, countMode, cc);
+    const nums = panel.querySelectorAll(".derived-num");
+    if (nums[0]) { nums[0].textContent = dd.occupied; nums[0].style.color = dd.pct>=85?C.alert:C.signal; }
+    if (nums[1]) nums[1].textContent = dd.vacant;
+    if (nums[2]) { nums[2].textContent = dd.pct+"%"; nums[2].style.color = dd.pct>=85?C.alert:C.signalDim; }
+    // disable a level's minus button at zero
+    panel.querySelectorAll(".step-minus").forEach(b => {
+      const v = parseInt(levelCounts[b.dataset.level],10) || 0;
+      b.disabled = v <= 0;
+    });
+  }
+
+  function bump(level, delta) {
+    const cur = parseInt(levelCounts[level],10) || 0;
+    const next = Math.max(0, cur + delta);
+    levelCounts[level] = String(next);
+    const inp = panel.querySelector('.level-input[data-level="'+level.replace(/"/g,'&quot;')+'"]');
+    if (inp) inp.value = next === 0 ? "" : String(next);
+    refreshDerived();
+  }
+
+  panel.querySelectorAll(".step-plus").forEach(b => {
+    b.onclick = () => bump(b.dataset.level, 1);
+  });
+  panel.querySelectorAll(".step-minus").forEach(b => {
+    b.onclick = () => bump(b.dataset.level, -1);
+  });
   panel.querySelectorAll(".level-input").forEach(inp => {
     inp.addEventListener("input", () => {
       levelCounts[inp.dataset.level] = inp.value;
-      const cc = currentCounted();
-      const dd = derive(f, countMode, cc);
-      const nums = panel.querySelectorAll(".derived-num");
-      if (nums[0]) { nums[0].textContent = dd.occupied; nums[0].style.color = dd.pct>=85?C.alert:C.signal; }
-      if (nums[1]) nums[1].textContent = dd.vacant;
-      if (nums[2]) { nums[2].textContent = dd.pct+"%"; nums[2].style.color = dd.pct>=85?C.alert:C.signalDim; }
+      refreshDerived();
     });
   });
+  refreshDerived();
   const notes = document.getElementById("notesInput");
   if (notes) notes.addEventListener("input", () => { window._notesDraft = notes.value; });
   document.getElementById("logBtn").onclick = logCount;
