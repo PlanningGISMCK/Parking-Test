@@ -438,10 +438,16 @@ let lotLayer = null;
 const polyLayers = {};
 
 function baseStyle(feat) {
-  const t = feat.properties.LotType;
-  if (t === "parking garage") return { color:"#6e4a1d", weight:1.4, fillColor:"#9a6a2f", fillOpacity:0.28 };
-  if (t === "public off-street") return { color:"#3f8a6f", weight:1.2, fillColor:"#1f6f54", fillOpacity:0.18 };
-  return { color:"#8a8674", weight:1, fillColor:"#b7b29c", fillOpacity:0.14, dashArray:"3,3" }; // on-street
+  const p = feat.properties || {};
+  const t = (p.Type || "");
+  if (t.indexOf("Garage") >= 0)
+    return { color:"#5a3c17", weight:2, fillColor:"#9a6a2f", fillOpacity:0.55 };
+  if (t.indexOf("Public - Off") >= 0)
+    return { color:"#175640", weight:2, fillColor:"#1f6f54", fillOpacity:0.42 };
+  if (t.indexOf("Private") >= 0)
+    return { color:"#7a7566", weight:1.5, fillColor:"#b7b29c", fillOpacity:0.35 };
+  // on-street
+  return { color:"#8a5a20", weight:2.5, fillColor:"#b0823f", fillOpacity:0.5 };
 }
 
 // Map data is loaded from three files in the repo (all WGS84):
@@ -491,14 +497,6 @@ function applySectorToMap() {
       }
     });
   }
-  // pins
-  FACILITIES.forEach(f => {
-    const m = markers[f.id];
-    if (!m) return;
-    const show = !activeSector || f.sector === activeSector;
-    if (show && !map.hasLayer(m)) m.addTo(map);
-    if (!show && map.hasLayer(m)) map.removeLayer(m);
-  });
   // sector boundary
   if (sectorLayer) { map.removeLayer(sectorLayer); sectorLayer = null; }
   if (activeSector && sectorsFC) {
@@ -565,24 +563,11 @@ function pinHtml(f, active) {
     '<circle cx="13" cy="12.5" r="6.5" fill="'+ring+'"/></svg>';
 }
 
-FACILITIES.forEach(f => {
-  if (f.lat == null) return;
-  if (f.category === "On-street") return;  // on-street shown as polygons only, no pin
-  const m = L.marker([f.lat, f.lng], {
-    icon: L.divIcon({ className:"", html:pinHtml(f,false), iconSize:[24,32], iconAnchor:[12,32] })
-  }).addTo(map);
-  m.bindTooltip(f.name + " · " + f.capacity + " spaces", { direction:"top", offset:[0,-30] });
-  m.on("click", () => selectFacility(f.id));
-  markers[f.id] = m;
-});
+// Facilities are drawn as their real polygons (see buildLotOverlay).
+// No pin markers — the shapes are the map.
 setTimeout(() => map.invalidateSize(), 200);
 
-function refreshPins() {
-  FACILITIES.forEach(f => {
-    if (!markers[f.id]) return;
-    markers[f.id].setIcon(L.divIcon({ className:"", html:pinHtml(f, f.id===selectedId), iconSize:[24,32], iconAnchor:[12,32] }));
-  });
-}
+function refreshPins() { /* no pins — facilities are drawn as polygons */ }
 
 // Highlight the one polygon belonging to the selected facility (1:1 by index).
 function refreshPolygons() {
@@ -689,7 +674,7 @@ function jumpMapTo(f) {
   } else if (f.lat != null) {
     map.setView([f.lat, f.lng], Math.max(map.getZoom(), 17), { animate:true });
   }
-  if (markers[f.id] && markers[f.id].openTooltip) markers[f.id].openTooltip();
+  if (layer && layer.openTooltip) layer.openTooltip();
 }
 
 function currentCounted() {
