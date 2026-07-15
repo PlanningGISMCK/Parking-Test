@@ -38,6 +38,12 @@
   }
   .round-note { font-size:11px; color:var(--muted); margin-top:10px; }
 
+  .sector-bar { display:flex; align-items:center; gap:14px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 16px; margin-bottom:16px; flex-wrap:wrap; }
+  .sector-label { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .sector-chips { display:flex; gap:6px; flex-wrap:wrap; flex:1; }
+  .sector-chip { min-width:44px; height:38px; padding:0 14px; border:1px solid var(--line); border-radius:8px; background:var(--soft); color:var(--ink); font-family:'Fraunces',Georgia,serif; font-size:17px; font-weight:600; cursor:pointer; transition:all .1s ease; }
+  .sector-chip.on { background:var(--signal); border-color:var(--signal); color:#fff; box-shadow:0 2px 8px rgba(31,111,84,.28); }
+  .sector-count { font-size:12px; color:var(--muted); }
   .grid { display:grid; grid-template-columns:1.1fr 1fr; gap:16px; margin-bottom:16px; }
 
   .map-card { position:relative; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:8px; }
@@ -152,6 +158,12 @@
     <div class="round-note">This date + shift + surveyor stamps every count you log. Set it once at the start of a round.</div>
   </div>
 
+  <div class="sector-bar">
+    <span class="sector-label">Sector</span>
+    <div class="sector-chips" id="sectorChips"></div>
+    <span class="sector-count" id="sectorCount"></span>
+  </div>
+
   <div class="grid">
     <section class="map-card">
       <div id="map"></div>
@@ -198,114 +210,180 @@
 //  Refine lat/lng as needed. Levels listed for garages.
 // ════════════════════════════════════════════════════════════════
 const FACILITIES = [
-  { id:"lot-5-1", name:"Lot 5 (1)", polyIdx:0, address:"", category:"Public lot", lotType:"surface lot", quadrant:"D", ring:"Mid", capacity:39, levels:null, lat:33.196757, lng:-96.613778, notes:"" },
-  { id:"lot-6", name:"Lot 6", polyIdx:1, address:"", category:"Public lot", lotType:"surface lot", quadrant:"D", ring:"Outer", capacity:32, levels:null, lat:33.196731, lng:-96.612744, notes:"Tree Occlusion" },
-  { id:"lot-4", name:"Lot 4", polyIdx:2, address:"", category:"Public lot", lotType:"surface lot", quadrant:"C", ring:"Mid", capacity:112, levels:null, lat:33.1963, lng:-96.61636, notes:"Southern Spots - 3 Deep Shadows" },
-  { id:"city-lot-2", name:"City Lot #2", polyIdx:3, address:"", category:"Public lot", lotType:"surface lot", quadrant:"A", ring:"Mid", capacity:75, levels:null, lat:33.197597, lng:-96.617098, notes:"" },
-  { id:"city-lot-3", name:"City Lot #3", polyIdx:4, address:"", category:"Public lot", lotType:"surface lot", quadrant:"A", ring:"Mid", capacity:83, levels:null, lat:33.198846, lng:-96.616241, notes:"Tree Occlusion Western Spots, Southern Spots" },
-  { id:"lot-1-north", name:"Lot 1 North", polyIdx:5, address:"", category:"Public lot", lotType:"surface lot", quadrant:"B", ring:"Outer", capacity:124, levels:null, lat:33.20005, lng:-96.614713, notes:"" },
-  { id:"hall-library-lot", name:"Hall Library Lot", polyIdx:6, address:"", category:"Public lot", lotType:"surface lot", quadrant:"A", ring:"Outer", capacity:65, levels:null, lat:33.200165, lng:-96.615319, notes:"Tree Occlusion Mid-Spots" },
-  { id:"municipal-court-lots", name:"Municipal Court Lots", polyIdx:7, address:"", category:"Public lot", lotType:"surface lot", quadrant:"D", ring:"Mid", capacity:10, levels:null, lat:33.196423, lng:-96.614035, notes:"Tree Occlusion Northern Dumpster Spot" },
-  { id:"davis-at-the-square", name:"Davis at the Square", polyIdx:8, address:"", category:"Garage", lotType:"garage", quadrant:"D", ring:"Outer", capacity:98, levels:["Ground / Level 1","Level 2","Level 3"], lat:33.195241, lng:-96.61416, notes:"Parking Structure" },
-  { id:"city-lot-1", name:"City Lot #1", polyIdx:9, address:"", category:"Public lot", lotType:"surface lot", quadrant:"B", ring:"Outer", capacity:103, levels:null, lat:33.199523, lng:-96.613897, notes:"" },
-  { id:"water-tower-lot", name:"Water Tower Lot", polyIdx:10, address:"", category:"Public lot", lotType:"surface lot", quadrant:"D", ring:"Outer", capacity:21, levels:null, lat:33.196288, lng:-96.612843, notes:"Tree Occlusion" },
-  { id:"playful-corp", name:"Playful Corp.", polyIdx:11, address:"", category:"Public lot", lotType:"surface lot", quadrant:"D", ring:"Outer", capacity:125, levels:null, lat:33.194926, lng:-96.612906, notes:"" },
-  { id:"lot-h-north", name:"Lot H - North", polyIdx:12, address:"", category:"Public lot", lotType:"surface lot", quadrant:"A", ring:"Outer", capacity:43, levels:null, lat:33.200358, lng:-96.6162, notes:"Tree Occlusion Southern Row" },
-  { id:"chestnut-garage", name:"Chestnut Garage", polyIdx:13, address:"", category:"Garage", lotType:"garage", quadrant:"B", ring:"Outer", capacity:312, levels:["Ground / Level 1","Level 2","Level 3","Level 4","Roof"], lat:33.198413, lng:-96.612906, notes:"Parking Structure" },
-  { id:"lot-h-south", name:"Lot H - South", polyIdx:14, address:"", category:"Public lot", lotType:"surface lot", quadrant:"A", ring:"Outer", capacity:40, levels:null, lat:33.200012, lng:-96.616257, notes:"" },
-  { id:"wysong-lot-c-north", name:"Wysong - Lot C North", polyIdx:15, address:"", category:"Public lot", lotType:"surface lot", quadrant:"B", ring:"Outer", capacity:19, levels:null, lat:33.199796, lng:-96.613127, notes:"" },
-  { id:"wysong-lot-c-south", name:"Wysong - Lot C South", polyIdx:16, address:"", category:"Public lot", lotType:"surface lot", quadrant:"B", ring:"Outer", capacity:9, levels:null, lat:33.199473, lng:-96.613131, notes:"Temporary Construction Site" },
-  { id:"lot-1-south", name:"Lot 1 South", polyIdx:17, address:"", category:"Public lot", lotType:"surface lot", quadrant:"B", ring:"Outer", capacity:48, levels:null, lat:33.199411, lng:-96.614525, notes:"Tree Occlusion Periphery" },
-  { id:"on-street-zone-a-inner-seg-1", name:"On-street — Zone A · Inner · seg 1", polyIdx:18, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:11, levels:null, lat:33.197583, lng:-96.61514, notes:"" },
-  { id:"on-street-zone-a-inner-seg-2", name:"On-street — Zone A · Inner · seg 2", polyIdx:19, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:11, levels:null, lat:33.197838, lng:-96.615394, notes:"" },
-  { id:"on-street-zone-a-inner-seg-3", name:"On-street — Zone A · Inner · seg 3", polyIdx:20, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:12, levels:null, lat:33.197632, lng:-96.615695, notes:"" },
-  { id:"on-street-zone-a-inner-seg-4", name:"On-street — Zone A · Inner · seg 4", polyIdx:21, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:11, levels:null, lat:33.197363, lng:-96.615434, notes:"" },
-  { id:"on-street-zone-a-inner-seg-5", name:"On-street — Zone A · Inner · seg 5", polyIdx:22, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:6, levels:null, lat:33.197595, lng:-96.615816, notes:"" },
-  { id:"on-street-zone-a-inner-seg-6", name:"On-street — Zone A · Inner · seg 6", polyIdx:23, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:7, levels:null, lat:33.197915, lng:-96.616169, notes:"" },
-  { id:"on-street-zone-a-inner-seg-7", name:"On-street — Zone A · Inner · seg 7", polyIdx:24, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:8, levels:null, lat:33.19728, lng:-96.616148, notes:"" },
-  { id:"louisiana-19-s", name:"Louisiana 19-S", polyIdx:25, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Mid", capacity:4, levels:null, lat:33.197277, lng:-96.61695, notes:"" },
-  { id:"on-street-zone-a-outer-seg-1", name:"On-street — Zone A · Outer · seg 1", polyIdx:26, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Outer", capacity:6, levels:null, lat:33.197273, lng:-96.617756, notes:"" },
-  { id:"on-street-zone-a-outer-seg-2", name:"On-street — Zone A · Outer · seg 2", polyIdx:27, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Outer", capacity:6, levels:null, lat:33.197975, lng:-96.618538, notes:"" },
-  { id:"on-street-zone-a-mid-seg-1", name:"On-street — Zone A · Mid · seg 1", polyIdx:28, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Mid", capacity:7, levels:null, lat:33.197992, lng:-96.616972, notes:"" },
-  { id:"on-street-zone-a-mid-seg-2", name:"On-street — Zone A · Mid · seg 2", polyIdx:29, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Mid", capacity:9, levels:null, lat:33.198246, lng:-96.616673, notes:"Building Occlusion Southern Spots" },
-  { id:"on-street-zone-a-inner-seg-8", name:"On-street — Zone A · Inner · seg 8", polyIdx:30, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:7, levels:null, lat:33.19824, lng:-96.615884, notes:"" },
-  { id:"on-street-zone-a-inner-seg-9", name:"On-street — Zone A · Inner · seg 9", polyIdx:31, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:8, levels:null, lat:33.197997, lng:-96.616197, notes:"" },
-  { id:"on-street-zone-a-inner-seg-10", name:"On-street — Zone A · Inner · seg 10", polyIdx:32, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:13, levels:null, lat:33.197972, lng:-96.615363, notes:"" },
-  { id:"on-street-zone-a-inner-seg-11", name:"On-street — Zone A · Inner · seg 11", polyIdx:33, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:7, levels:null, lat:33.19824, lng:-96.61579, notes:"" },
-  { id:"on-street-zone-a-inner-seg-12", name:"On-street — Zone A · Inner · seg 12", polyIdx:34, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:5, levels:null, lat:33.198268, lng:-96.615034, notes:"" },
-  { id:"on-street-zone-a-mid-seg-3", name:"On-street — Zone A · Mid · seg 3", polyIdx:35, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Mid", capacity:7, levels:null, lat:33.1989, lng:-96.615879, notes:"" },
-  { id:"on-street-zone-a-outer-seg-3", name:"On-street — Zone A · Outer · seg 3", polyIdx:36, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Outer", capacity:4, levels:null, lat:33.198428, lng:-96.617397, notes:"" },
-  { id:"on-street-zone-a-outer-seg-4", name:"On-street — Zone A · Outer · seg 4", polyIdx:37, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Outer", capacity:10, levels:null, lat:33.199622, lng:-96.618104, notes:"" },
-  { id:"on-street-zone-a-outer-seg-5", name:"On-street — Zone A · Outer · seg 5", polyIdx:38, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Outer", capacity:7, levels:null, lat:33.199556, lng:-96.615888, notes:"" },
-  { id:"on-street-zone-a-outer-seg-6", name:"On-street — Zone A · Outer · seg 6", polyIdx:39, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Outer", capacity:13, levels:null, lat:33.199788, lng:-96.615023, notes:"" },
-  { id:"on-street-zone-a-outer-seg-7", name:"On-street — Zone A · Outer · seg 7", polyIdx:40, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Outer", capacity:4, levels:null, lat:33.199525, lng:-96.615799, notes:"" },
-  { id:"on-street-zone-a-outer-seg-8", name:"On-street — Zone A · Outer · seg 8", polyIdx:41, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Outer", capacity:3, levels:null, lat:33.200178, lng:-96.61589, notes:"" },
-  { id:"on-street-zone-b-inner-seg-1", name:"On-street — Zone B · Inner · seg 1", polyIdx:42, address:"", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Inner", capacity:13, levels:null, lat:33.197648, lng:-96.614983, notes:"" },
-  { id:"on-street-zone-b-inner-seg-2", name:"On-street — Zone B · Inner · seg 2", polyIdx:43, address:"", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Inner", capacity:6, levels:null, lat:33.19729, lng:-96.614499, notes:"" },
-  { id:"on-street-zone-b-inner-seg-3", name:"On-street — Zone B · Inner · seg 3", polyIdx:44, address:"", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Inner", capacity:6, levels:null, lat:33.197933, lng:-96.61455, notes:"" },
-  { id:"on-street-zone-b-mid-seg-1", name:"On-street — Zone B · Mid · seg 1", polyIdx:45, address:"", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Mid", capacity:3, levels:null, lat:33.197935, lng:-96.613959, notes:"" },
-  { id:"on-street-zone-b-mid-seg-2", name:"On-street — Zone B · Mid · seg 2", polyIdx:46, address:"", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Mid", capacity:7, levels:null, lat:33.197287, lng:-96.613882, notes:"" },
-  { id:"on-street-zone-b-outer-seg-1", name:"On-street — Zone B · Outer · seg 1", polyIdx:47, address:"", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Outer", capacity:8, levels:null, lat:33.197285, lng:-96.61289, notes:"Tree Occlusion Easternmost Spot" },
-  { id:"on-street-zone-b-outer-seg-2", name:"On-street — Zone B · Outer · seg 2", polyIdx:48, address:"", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Outer", capacity:8, levels:null, lat:33.197928, lng:-96.613006, notes:"" },
-  { id:"on-street-zone-b-outer-seg-3", name:"On-street — Zone B · Outer · seg 3", polyIdx:49, address:"", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Outer", capacity:7, levels:null, lat:33.198004, lng:-96.612975, notes:"" },
-  { id:"on-street-zone-b-mid-seg-3", name:"On-street — Zone B · Mid · seg 3", polyIdx:50, address:"", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Mid", capacity:4, levels:null, lat:33.198002, lng:-96.613865, notes:"" },
-  { id:"on-street-zone-b-inner-seg-4", name:"On-street — Zone B · Inner · seg 4", polyIdx:51, address:"", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Inner", capacity:6, levels:null, lat:33.198001, lng:-96.614677, notes:"" },
-  { id:"on-street-zone-b-inner-seg-5", name:"On-street — Zone B · Inner · seg 5", polyIdx:52, address:"", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Inner", capacity:8, levels:null, lat:33.198322, lng:-96.614941, notes:"" },
-  { id:"on-street-zone-b-outer-seg-4", name:"On-street — Zone B · Outer · seg 4", polyIdx:53, address:"", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Outer", capacity:3, levels:null, lat:33.199453, lng:-96.614946, notes:"" },
-  { id:"on-street-zone-b-outer-seg-5", name:"On-street — Zone B · Outer · seg 5", polyIdx:54, address:"", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Outer", capacity:7, levels:null, lat:33.199964, lng:-96.61494, notes:"" },
-  { id:"on-street-zone-c-inner-seg-1", name:"On-street — Zone C · Inner · seg 1", polyIdx:55, address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Inner", capacity:13, levels:null, lat:33.197234, lng:-96.615449, notes:"" },
-  { id:"on-street-zone-c-inner-seg-2", name:"On-street — Zone C · Inner · seg 2", polyIdx:56, address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Inner", capacity:6, levels:null, lat:33.196899, lng:-96.615792, notes:"" },
-  { id:"on-street-zone-c-inner-seg-3", name:"On-street — Zone C · Inner · seg 3", polyIdx:57, address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Inner", capacity:7, levels:null, lat:33.196937, lng:-96.615051, notes:"" },
-  { id:"on-street-zone-c-inner-seg-4", name:"On-street — Zone C · Inner · seg 4", polyIdx:58, address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Inner", capacity:7, levels:null, lat:33.197196, lng:-96.616155, notes:"Tree Occlusion Eastern Spot" },
-  { id:"on-street-zone-c-inner-seg-5", name:"On-street — Zone C · Inner · seg 5", polyIdx:59, address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Inner", capacity:6, levels:null, lat:33.196899, lng:-96.61589, notes:"" },
-  { id:"on-street-zone-c-mid-seg-1", name:"On-street — Zone C · Mid · seg 1", polyIdx:60, address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Mid", capacity:4, levels:null, lat:33.197191, lng:-96.616911, notes:"" },
-  { id:"on-street-zone-c-outer-seg-1", name:"On-street — Zone C · Outer · seg 1", polyIdx:61, address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:5, levels:null, lat:33.19718, lng:-96.617708, notes:"" },
-  { id:"on-street-zone-c-outer-seg-2", name:"On-street — Zone C · Outer · seg 2", polyIdx:62, address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:5, levels:null, lat:33.196829, lng:-96.617405, notes:"" },
-  { id:"on-street-zone-c-outer-seg-3", name:"On-street — Zone C · Outer · seg 3", polyIdx:63, address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:8, levels:null, lat:33.196222, lng:-96.617407, notes:"" },
-  { id:"on-street-zone-c-mid-seg-2", name:"On-street — Zone C · Mid · seg 2", polyIdx:64, address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Mid", capacity:6, levels:null, lat:33.196314, lng:-96.615801, notes:"" },
-  { id:"on-street-zone-c-mid-seg-3", name:"On-street — Zone C · Mid · seg 3", polyIdx:65, address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Mid", capacity:3, levels:null, lat:33.19624, lng:-96.615034, notes:"" },
-  { id:"on-street-zone-c-outer-seg-4", name:"On-street — Zone C · Outer · seg 4", polyIdx:66, address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:6, levels:null, lat:33.195541, lng:-96.615782, notes:"" },
-  { id:"on-street-zone-c-outer-seg-5", name:"On-street — Zone C · Outer · seg 5", polyIdx:67, address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:8, levels:null, lat:33.195926, lng:-96.616888, notes:"" },
-  { id:"on-street-zone-c-outer-seg-6", name:"On-street — Zone C · Outer · seg 6", polyIdx:68, address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:8, levels:null, lat:33.195904, lng:-96.617833, notes:"" },
-  { id:"on-street-zone-c-outer-seg-7", name:"On-street — Zone C · Outer · seg 7", polyIdx:69, address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:8, levels:null, lat:33.195588, lng:-96.617434, notes:"" },
-  { id:"on-street-zone-c-outer-seg-8", name:"On-street — Zone C · Outer · seg 8", polyIdx:70, address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:10, levels:null, lat:33.194975, lng:-96.615813, notes:"" },
-  { id:"on-street-zone-d-inner-seg-1", name:"On-street — Zone D · Inner · seg 1", polyIdx:71, address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Inner", capacity:7, levels:null, lat:33.197206, lng:-96.61453, notes:"" },
-  { id:"on-street-zone-d-inner-seg-2", name:"On-street — Zone D · Inner · seg 2", polyIdx:72, address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Inner", capacity:7, levels:null, lat:33.196877, lng:-96.614941, notes:"Tree Occlusion Northern Spot" },
-  { id:"lot-5-2", name:"Lot 5 (2)", polyIdx:73, address:"", category:"Public lot", lotType:"surface lot", quadrant:"D", ring:"Mid", capacity:17, levels:null, lat:33.196653, lng:-96.613905, notes:"" },
-  { id:"on-street-zone-d-mid-seg-1", name:"On-street — Zone D · Mid · seg 1", polyIdx:74, address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Mid", capacity:7, levels:null, lat:33.197208, lng:-96.613902, notes:"" },
-  { id:"on-street-zone-d-outer-seg-1", name:"On-street — Zone D · Outer · seg 1", polyIdx:75, address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:8, levels:null, lat:33.197217, lng:-96.612898, notes:"" },
-  { id:"public-lot-zone-d-outer-unnamed", name:"Public lot — Zone D · Outer (unnamed)", polyIdx:76, address:"", category:"Public lot", lotType:"surface lot", quadrant:"D", ring:"Outer", capacity:9, levels:null, lat:33.196548, lng:-96.613188, notes:"Under Construction 2019" },
-  { id:"on-street-zone-d-mid-seg-2", name:"On-street — Zone D · Mid · seg 2", polyIdx:77, address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Mid", capacity:7, levels:null, lat:33.195984, lng:-96.613775, notes:"" },
-  { id:"on-street-zone-d-mid-seg-3", name:"On-street — Zone D · Mid · seg 3", polyIdx:78, address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Mid", capacity:4, levels:null, lat:33.196131, lng:-96.614215, notes:"" },
-  { id:"municipal-court-lot-west", name:"Municipal Court Lot West", polyIdx:79, address:"", category:"Public lot", lotType:"surface lot", quadrant:"D", ring:"Mid", capacity:27, levels:null, lat:33.196457, lng:-96.614346, notes:"Tree Occlusion North Spot Mid" },
-  { id:"on-street-zone-d-mid-seg-4", name:"On-street — Zone D · Mid · seg 4", polyIdx:80, address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Mid", capacity:5, levels:null, lat:33.195984, lng:-96.614659, notes:"" },
-  { id:"on-street-zone-d-outer-seg-2", name:"On-street — Zone D · Outer · seg 2", polyIdx:81, address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:14, levels:null, lat:33.194389, lng:-96.614986, notes:"" },
-  { id:"on-street-zone-d-outer-seg-3", name:"On-street — Zone D · Outer · seg 3", polyIdx:82, address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:17, levels:null, lat:33.19543, lng:-96.614921, notes:"" },
-  { id:"on-street-zone-d-outer-seg-4", name:"On-street — Zone D · Outer · seg 4", polyIdx:83, address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:4, levels:null, lat:33.195905, lng:-96.613933, notes:"" },
-  { id:"on-street-zone-d-outer-seg-5", name:"On-street — Zone D · Outer · seg 5", polyIdx:84, address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:12, levels:null, lat:33.1947, lng:-96.61419, notes:"" },
-  { id:"on-street-zone-d-outer-seg-6", name:"On-street — Zone D · Outer · seg 6", polyIdx:85, address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:12, levels:null, lat:33.194796, lng:-96.614161, notes:"" },
-  { id:"on-street-zone-d-outer-seg-7", name:"On-street — Zone D · Outer · seg 7", polyIdx:86, address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:5, levels:null, lat:33.19412, lng:-96.613849, notes:"Tree Occlusion Eastern Spots" },
-  { id:"on-street-zone-d-outer-seg-8", name:"On-street — Zone D · Outer · seg 8", polyIdx:87, address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:12, levels:null, lat:33.194388, lng:-96.613533, notes:"C1 is sharper, but with tree occlusion" },
-  { id:"on-street-zone-d-outer-seg-9", name:"On-street — Zone D · Outer · seg 9", polyIdx:88, address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:9, levels:null, lat:33.195343, lng:-96.613489, notes:"" },
-  { id:"on-street-zone-d-outer-seg-10", name:"On-street — Zone D · Outer · seg 10", polyIdx:89, address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:22, levels:null, lat:33.195348, lng:-96.613361, notes:"" },
-  { id:"on-street-zone-d-outer-seg-11", name:"On-street — Zone D · Outer · seg 11", polyIdx:90, address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:4, levels:null, lat:33.196533, lng:-96.612783, notes:"Under Construction 2019" },
-  { id:"on-street-zone-d-outer-seg-12", name:"On-street — Zone D · Outer · seg 12", polyIdx:91, address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:8, levels:null, lat:33.195899, lng:-96.612944, notes:"" },
-  { id:"on-street-zone-d-mid-seg-5", name:"On-street — Zone D · Mid · seg 5", polyIdx:92, address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Mid", capacity:7, levels:null, lat:33.196367, lng:-96.614942, notes:"" },
-  { id:"on-street-zone-c-mid-seg-4", name:"On-street — Zone C · Mid · seg 4", polyIdx:93, address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Mid", capacity:4, levels:null, lat:33.19649, lng:-96.615881, notes:"" },
-  { id:"on-street-zone-c-outer-seg-9", name:"On-street — Zone C · Outer · seg 9", polyIdx:94, address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:6, levels:null, lat:33.195546, lng:-96.615893, notes:"" },
-  { id:"on-street-zone-c-outer-seg-10", name:"On-street — Zone C · Outer · seg 10", polyIdx:95, address:"", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:10, levels:null, lat:33.194927, lng:-96.615883, notes:"" },
-  { id:"on-street-zone-a-mid-seg-4", name:"On-street — Zone A · Mid · seg 4", polyIdx:96, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Mid", capacity:4, levels:null, lat:33.197911, lng:-96.616953, notes:"" },
-  { id:"on-street-zone-a-outer-seg-9", name:"On-street — Zone A · Outer · seg 9", polyIdx:97, address:"", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Outer", capacity:7, levels:null, lat:33.198972, lng:-96.617398, notes:"" },
-  { id:"on-street-zone-d-inner-seg-3", name:"On-street — Zone D · Inner · seg 3", polyIdx:98, address:"", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Inner", capacity:3, levels:null, lat:33.19662, lng:-96.614536, notes:"" },
-  { id:"city-hall-n-1", name:"City Hall N (1)", polyIdx:99, address:"", category:"Public lot", lotType:"surface lot", quadrant:"", ring:"", capacity:103, levels:null, lat:33.199322, lng:-96.61002, notes:"" },
-  { id:"city-hall-n-2", name:"City Hall N (2)", polyIdx:100, address:"", category:"On-street", lotType:"on-street", quadrant:"", ring:"", capacity:1, levels:null, lat:33.199616, lng:-96.61023, notes:"" },
-  { id:"city-hall-n-3", name:"City Hall N (3)", polyIdx:101, address:"", category:"On-street", lotType:"on-street", quadrant:"", ring:"", capacity:5, levels:null, lat:33.199608, lng:-96.609802, notes:"" },
-  { id:"city-hall-n-4", name:"City Hall N (4)", polyIdx:102, address:"", category:"On-street", lotType:"on-street", quadrant:"", ring:"", capacity:10, levels:null, lat:33.199323, lng:-96.609461, notes:"" },
-  { id:"city-hall-ne", name:"City Hall NE", polyIdx:103, address:"", category:"Public lot", lotType:"surface lot", quadrant:"", ring:"", capacity:14, levels:null, lat:33.199227, lng:-96.608984, notes:"" },
-  { id:"city-hall-e", name:"City Hall E", polyIdx:104, address:"", category:"Public lot", lotType:"surface lot", quadrant:"", ring:"", capacity:48, levels:null, lat:33.198985, lng:-96.608979, notes:"" },
-  { id:"city-hall-se", name:"City Hall SE", polyIdx:105, address:"", category:"Public lot", lotType:"surface lot", quadrant:"", ring:"", capacity:52, levels:null, lat:33.198336, lng:-96.609035, notes:"" },
-  { id:"tupps", name:"Tupps", polyIdx:106, address:"", category:"Public lot", lotType:"surface lot", quadrant:"", ring:"", capacity:152, levels:null, lat:33.195506, lng:-96.610496, notes:"" },
-  { id:"flour-mill", name:"Flour Mill", polyIdx:107, address:"", category:"Public lot", lotType:"surface lot", quadrant:"", ring:"", capacity:30, levels:null, lat:33.197624, lng:-96.610484, notes:"" },
+  { id:"lot-5-n", name:"Lot 5 - N", polyIdx:0, sector:"D", lotNumber:"D11", street:"JOHNSON", category:"Public lot", lotType:"public off-street", quadrant:"D", ring:"Mid", capacity:39, levels:null, lat:33.196757, lng:-96.613778, notes:"" },
+  { id:"lot-6", name:"Lot 6", polyIdx:1, sector:"D", lotNumber:"D06", street:"CLOYD", category:"Public lot", lotType:"public off-street", quadrant:"D", ring:"Outer", capacity:31, levels:null, lat:33.196731, lng:-96.612744, notes:"Tree Occlusion" },
+  { id:"lot-4", name:"Lot 4", polyIdx:2, sector:"C", lotNumber:"C26", street:"CLOYD", category:"Public lot", lotType:"public off-street", quadrant:"C", ring:"Mid", capacity:105, levels:null, lat:33.1963, lng:-96.61636, notes:"Southern Spots - 3 Deep Shadows" },
+  { id:"city-lot-2", name:"City Lot #2", polyIdx:3, sector:"A", lotNumber:"A52", street:"LOUISIANA", category:"Public lot", lotType:"public off-street", quadrant:"A", ring:"Mid", capacity:75, levels:null, lat:33.197597, lng:-96.617098, notes:"" },
+  { id:"city-lot-3", name:"City Lot #3", polyIdx:4, sector:"A", lotNumber:"A12", street:"HERNDON", category:"Public lot", lotType:"public off-street", quadrant:"A", ring:"Mid", capacity:80, levels:null, lat:33.198846, lng:-96.616241, notes:"Tree Occlusion Western Spots, Southern Spots" },
+  { id:"lot-1-north", name:"Lot 1 North", polyIdx:5, sector:"B", lotNumber:"B01", street:"JOHNSON", category:"Public lot", lotType:"public off-street", quadrant:"B", ring:"Outer", capacity:124, levels:null, lat:33.20005, lng:-96.614713, notes:"" },
+  { id:"hall-library-lot", name:"Hall Library Lot", polyIdx:6, sector:"A", lotNumber:"A05", street:"LAMAR", category:"Public lot", lotType:"public off-street", quadrant:"A", ring:"Outer", capacity:65, levels:null, lat:33.200165, lng:-96.615319, notes:"Tree Occlusion Mid-Spots" },
+  { id:"municipal-court-lot", name:"Municipal Court Lot", polyIdx:7, sector:"D", lotNumber:"D13", street:"CLOYD", category:"Public lot", lotType:"public off-street", quadrant:"D", ring:"Mid", capacity:9, levels:null, lat:33.196423, lng:-96.614035, notes:"Tree Occlusion Northern Dumpster Spot" },
+  { id:"davis-garage", name:"Davis Garage", polyIdx:8, sector:"D", lotNumber:"Davis Garage", street:"HOWELL", category:"Garage", lotType:"parking garage", quadrant:"D", ring:"Outer", capacity:193, levels:["Ground / Level 1","Level 2","Level 3"], lat:33.195241, lng:-96.61416, notes:"Parking Structure" },
+  { id:"city-lot-1", name:"City Lot #1", polyIdx:9, sector:"B", lotNumber:"B05", street:"HUNT", category:"Public lot", lotType:"public off-street", quadrant:"B", ring:"Outer", capacity:106, levels:null, lat:33.199523, lng:-96.613897, notes:"" },
+  { id:"water-tower-lot", name:"Water Tower Lot", polyIdx:10, sector:"D", lotNumber:"D08", street:"CLOYD", category:"Public lot", lotType:"public off-street", quadrant:"D", ring:"Outer", capacity:19, levels:null, lat:33.196288, lng:-96.612843, notes:"Tree Occlusion" },
+  { id:"playful-corp", name:"Playful Corp.", polyIdx:11, sector:"D", lotNumber:"D28", street:"CHESTNUT", category:"Public lot", lotType:"public off-street", quadrant:"D", ring:"Outer", capacity:126, levels:null, lat:33.194926, lng:-96.612906, notes:"" },
+  { id:"lot-h-north", name:"Lot H North", polyIdx:12, sector:"A", lotNumber:"A01", street:"WOOD", category:"Public lot", lotType:"public off-street", quadrant:"A", ring:"Outer", capacity:44, levels:null, lat:33.200358, lng:-96.6162, notes:"Tree Occlusion Southern Row" },
+  { id:"chestnut-commons", name:"Chestnut Commons", polyIdx:13, sector:"B", lotNumber:"Chestnut Commons", street:"HERNDON", category:"Garage", lotType:"parking garage", quadrant:"B", ring:"Outer", capacity:308, levels:["Ground / Level 1","Level 2","Level 3","Level 4","Roof"], lat:33.198413, lng:-96.612906, notes:"Parking Structure" },
+  { id:"lot-h-south", name:"Lot H South", polyIdx:14, sector:"A", lotNumber:"A02", street:"LOGAN", category:"Public lot", lotType:"public off-street", quadrant:"A", ring:"Outer", capacity:40, levels:null, lat:33.200012, lng:-96.616257, notes:"" },
+  { id:"wysong-lot-c-north", name:"Wysong Lot C North", polyIdx:15, sector:"B", lotNumber:"B06", street:"LOGAN", category:"Public lot", lotType:"public off-street", quadrant:"B", ring:"Outer", capacity:19, levels:null, lat:33.199796, lng:-96.613127, notes:"" },
+  { id:"wysong-lot-c-south", name:"Wysong Lot C South", polyIdx:16, sector:"B", lotNumber:"B07", street:"CHESTNUT", category:"Public lot", lotType:"public off-street", quadrant:"B", ring:"Outer", capacity:24, levels:null, lat:33.199473, lng:-96.613131, notes:"Temporary Construction Site" },
+  { id:"lot-1-south", name:"Lot 1 South", polyIdx:17, sector:"B", lotNumber:"B04", street:"HUNT", category:"Public lot", lotType:"public off-street", quadrant:"B", ring:"Outer", capacity:48, levels:null, lat:33.199411, lng:-96.614525, notes:"Tree Occlusion Periphery" },
+  { id:"a46-tennessee-public-on-street", name:"A46 TENNESSEE Public - On Street", polyIdx:18, sector:"A", lotNumber:"A46", street:"TENNESSEE", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:11, levels:null, lat:33.197583, lng:-96.61514, notes:"" },
+  { id:"a42-virginia-public-on-street", name:"A42 VIRGINIA Public - On Street", polyIdx:19, sector:"A", lotNumber:"A42", street:"VIRGINIA", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:11, levels:null, lat:33.197838, lng:-96.615394, notes:"" },
+  { id:"a41-kentucky-public-on-street", name:"A41 KENTUCKY Public - On Street", polyIdx:20, sector:"A", lotNumber:"A41", street:"KENTUCKY", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:12, levels:null, lat:33.197632, lng:-96.615695, notes:"" },
+  { id:"a43-louisiana-public-on-street", name:"A43 LOUISIANA Public - On Street", polyIdx:21, sector:"A", lotNumber:"A43", street:"LOUISIANA", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:13, levels:null, lat:33.197363, lng:-96.615434, notes:"" },
+  { id:"a40-kentucky-public-on-street", name:"A40 KENTUCKY Public - On Street", polyIdx:22, sector:"A", lotNumber:"A40", street:"KENTUCKY", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:6, levels:null, lat:33.197595, lng:-96.615816, notes:"" },
+  { id:"a37-virginia-public-on-street", name:"A37 VIRGINIA Public - On Street", polyIdx:23, sector:"A", lotNumber:"A37", street:"VIRGINIA", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:8, levels:null, lat:33.197915, lng:-96.616169, notes:"" },
+  { id:"a48-louisiana-public-on-street", name:"A48 LOUISIANA Public - On Street", polyIdx:24, sector:"A", lotNumber:"A48", street:"LOUISIANA", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:4, levels:null, lat:33.19728, lng:-96.616148, notes:"" },
+  { id:"a49-louisiana-public-on-street", name:"A49 LOUISIANA Public - On Street", polyIdx:25, sector:"A", lotNumber:"A49", street:"LOUISIANA", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Mid", capacity:2, levels:null, lat:33.197277, lng:-96.61695, notes:"" },
+  { id:"a51-louisiana-public-on-street", name:"A51 LOUISIANA Public - On Street", polyIdx:26, sector:"A", lotNumber:"A51", street:"LOUISIANA", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Outer", capacity:6, levels:null, lat:33.197273, lng:-96.617756, notes:"" },
+  { id:"a29-virginia-public-on-street", name:"A29 VIRGINIA Public - On Street", polyIdx:27, sector:"A", lotNumber:"A29", street:"VIRGINIA", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Outer", capacity:6, levels:null, lat:33.197975, lng:-96.618538, notes:"" },
+  { id:"a31-virginia-public-on-street", name:"A31 VIRGINIA Public - On Street", polyIdx:28, sector:"A", lotNumber:"A31", street:"VIRGINIA", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Mid", capacity:7, levels:null, lat:33.197992, lng:-96.616972, notes:"" },
+  { id:"a33-wood-public-on-street", name:"A33 WOOD Public - On Street", polyIdx:29, sector:"A", lotNumber:"A33", street:"WOOD", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Mid", capacity:7, levels:null, lat:33.198246, lng:-96.616672, notes:"Building Occlusion Southern Spots" },
+  { id:"a38-kentucky-public-on-street", name:"A38 KENTUCKY Public - On Street", polyIdx:30, sector:"A", lotNumber:"A38", street:"KENTUCKY", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:7, levels:null, lat:33.19824, lng:-96.615884, notes:"" },
+  { id:"a36-virginia-public-on-street", name:"A36 VIRGINIA Public - On Street", polyIdx:31, sector:"A", lotNumber:"A36", street:"VIRGINIA", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:7, levels:null, lat:33.197997, lng:-96.616197, notes:"" },
+  { id:"a43-virginia-public-on-street", name:"A43 VIRGINIA Public - On Street", polyIdx:32, sector:"A", lotNumber:"A43", street:"VIRGINIA", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:13, levels:null, lat:33.197972, lng:-96.615363, notes:"" },
+  { id:"a39-kentucky-public-on-street", name:"A39 KENTUCKY Public - On Street", polyIdx:33, sector:"A", lotNumber:"A39", street:"KENTUCKY", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:7, levels:null, lat:33.19824, lng:-96.61579, notes:"" },
+  { id:"a44-tennessee-public-on-street", name:"A44 TENNESSEE Public - On Street", polyIdx:34, sector:"A", lotNumber:"A44", street:"TENNESSEE", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Inner", capacity:5, levels:null, lat:33.198268, lng:-96.615034, notes:"" },
+  { id:"a11-kentucky-public-on-street", name:"A11 KENTUCKY Public - On Street", polyIdx:35, sector:"A", lotNumber:"A11", street:"KENTUCKY", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Mid", capacity:7, levels:null, lat:33.1989, lng:-96.615879, notes:"" },
+  { id:"a22-church-public-on-street", name:"A22 CHURCH Public - On Street", polyIdx:36, sector:"A", lotNumber:"A22", street:"CHURCH", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Outer", capacity:4, levels:null, lat:33.198428, lng:-96.617397, notes:"" },
+  { id:"a18-benge-public-on-street", name:"A18 BENGE Public - On Street", polyIdx:37, sector:"A", lotNumber:"A18", street:"BENGE", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Outer", capacity:13, levels:null, lat:33.199623, lng:-96.618104, notes:"" },
+  { id:"a14-kentucky-public-on-street", name:"A14 KENTUCKY Public - On Street", polyIdx:38, sector:"A", lotNumber:"A14", street:"KENTUCKY", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Outer", capacity:7, levels:null, lat:33.199556, lng:-96.615888, notes:"" },
+  { id:"a06-tennessee-public-on-street", name:"A06 TENNESSEE Public - On Street", polyIdx:39, sector:"A", lotNumber:"A06", street:"TENNESSEE", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Outer", capacity:13, levels:null, lat:33.199788, lng:-96.615023, notes:"" },
+  { id:"a13-kentucky-public-on-street", name:"A13 KENTUCKY Public - On Street", polyIdx:40, sector:"A", lotNumber:"A13", street:"KENTUCKY", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Outer", capacity:4, levels:null, lat:33.199525, lng:-96.615799, notes:"" },
+  { id:"a04-kentucky-public-on-street", name:"A04 KENTUCKY Public - On Street", polyIdx:41, sector:"A", lotNumber:"A04", street:"KENTUCKY", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Outer", capacity:3, levels:null, lat:33.200178, lng:-96.61589, notes:"" },
+  { id:"b30-tennessee-public-on-street", name:"B30 TENNESSEE Public - On Street", polyIdx:42, sector:"B", lotNumber:"B30", street:"TENNESSEE", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Inner", capacity:13, levels:null, lat:33.197648, lng:-96.614983, notes:"" },
+  { id:"b29-louisiana-public-on-street", name:"B29 LOUISIANA Public - On Street", polyIdx:43, sector:"B", lotNumber:"B29", street:"LOUISIANA", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Inner", capacity:4, levels:null, lat:33.19729, lng:-96.614499, notes:"" },
+  { id:"b20-virginia-public-on-street", name:"B20 VIRGINIA Public - On Street", polyIdx:44, sector:"B", lotNumber:"B20", street:"VIRGINIA", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Inner", capacity:6, levels:null, lat:33.197933, lng:-96.61455, notes:"" },
+  { id:"b22-virginia-public-on-street", name:"B22 VIRGINIA Public - On Street", polyIdx:45, sector:"B", lotNumber:"B22", street:"VIRGINIA", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Mid", capacity:3, levels:null, lat:33.197935, lng:-96.613959, notes:"" },
+  { id:"b28-louisiana-public-on-street", name:"B28 LOUISIANA Public - On Street", polyIdx:46, sector:"B", lotNumber:"B28", street:"LOUISIANA", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Mid", capacity:4, levels:null, lat:33.197287, lng:-96.613882, notes:"" },
+  { id:"b27-louisiana-public-on-street", name:"B27 LOUISIANA Public - On Street", polyIdx:47, sector:"B", lotNumber:"B27", street:"LOUISIANA", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Outer", capacity:7, levels:null, lat:33.197285, lng:-96.61289, notes:"Tree Occlusion Easternmost Spot" },
+  { id:"b25-virginia-public-on-street", name:"B25 VIRGINIA Public - On Street", polyIdx:48, sector:"B", lotNumber:"B25", street:"VIRGINIA", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Outer", capacity:8, levels:null, lat:33.197928, lng:-96.613006, notes:"" },
+  { id:"b24-virginia-public-on-street", name:"B24 VIRGINIA Public - On Street", polyIdx:49, sector:"B", lotNumber:"B24", street:"VIRGINIA", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Outer", capacity:7, levels:null, lat:33.198004, lng:-96.612975, notes:"" },
+  { id:"b21-virginia-public-on-street", name:"B21 VIRGINIA Public - On Street", polyIdx:50, sector:"B", lotNumber:"B21", street:"VIRGINIA", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Mid", capacity:4, levels:null, lat:33.198002, lng:-96.613865, notes:"" },
+  { id:"b19-virginia-public-on-street", name:"B19 VIRGINIA Public - On Street", polyIdx:51, sector:"B", lotNumber:"B19", street:"VIRGINIA", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Inner", capacity:6, levels:null, lat:33.198001, lng:-96.614677, notes:"" },
+  { id:"b18-tennessee-public-on-street", name:"B18 TENNESSEE Public - On Street", polyIdx:52, sector:"B", lotNumber:"B18", street:"TENNESSEE", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Inner", capacity:8, levels:null, lat:33.198322, lng:-96.614941, notes:"" },
+  { id:"b03-tennessee-public-on-street", name:"B03 TENNESSEE Public - On Street", polyIdx:53, sector:"B", lotNumber:"B03", street:"TENNESSEE", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Outer", capacity:2, levels:null, lat:33.199453, lng:-96.614946, notes:"" },
+  { id:"b02-tennessee-public-on-street", name:"B02 TENNESSEE Public - On Street", polyIdx:54, sector:"B", lotNumber:"B02", street:"TENNESSEE", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Outer", capacity:7, levels:null, lat:33.199964, lng:-96.61494, notes:"" },
+  { id:"c01-louisiana-public-on-street", name:"C01 LOUISIANA Public - On Street", polyIdx:55, sector:"C", lotNumber:"C01", street:"LOUISIANA", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Inner", capacity:13, levels:null, lat:33.197234, lng:-96.615449, notes:"" },
+  { id:"c20-kentucky-public-on-street", name:"C20 KENTUCKY Public - On Street", polyIdx:56, sector:"C", lotNumber:"C20", street:"KENTUCKY", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Inner", capacity:6, levels:null, lat:33.196899, lng:-96.615792, notes:"" },
+  { id:"c21-tennessee-public-on-street", name:"C21 TENNESSEE Public - On Street", polyIdx:57, sector:"C", lotNumber:"C21", street:"TENNESSEE", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Inner", capacity:6, levels:null, lat:33.196937, lng:-96.615051, notes:"" },
+  { id:"c22-louisiana-public-on-street", name:"C22 LOUISIANA Public - On Street", polyIdx:58, sector:"C", lotNumber:"C22", street:"LOUISIANA", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Inner", capacity:4, levels:null, lat:33.197196, lng:-96.616155, notes:"Tree Occlusion Eastern Spot" },
+  { id:"c21-kentucky-public-on-street", name:"C21 KENTUCKY Public - On Street", polyIdx:59, sector:"C", lotNumber:"C21", street:"KENTUCKY", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Inner", capacity:6, levels:null, lat:33.196899, lng:-96.61589, notes:"" },
+  { id:"c23-louisiana-public-on-street", name:"C23 LOUISIANA Public - On Street", polyIdx:60, sector:"C", lotNumber:"C23", street:"LOUISIANA", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Mid", capacity:3, levels:null, lat:33.197191, lng:-96.616911, notes:"" },
+  { id:"c39-louisiana-public-on-street", name:"C39 LOUISIANA Public - On Street", polyIdx:61, sector:"C", lotNumber:"C39", street:"LOUISIANA", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:3, levels:null, lat:33.19718, lng:-96.617708, notes:"" },
+  { id:"c36-church-public-on-street", name:"C36 CHURCH Public - On Street", polyIdx:62, sector:"C", lotNumber:"C36", street:"CHURCH", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:2, levels:null, lat:33.196829, lng:-96.617405, notes:"" },
+  { id:"c33-church-public-on-street", name:"C33 CHURCH Public - On Street", polyIdx:63, sector:"C", lotNumber:"C33", street:"CHURCH", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:8, levels:null, lat:33.196222, lng:-96.617407, notes:"" },
+  { id:"c18-kentucky-public-on-street", name:"C18 KENTUCKY Public - On Street", polyIdx:64, sector:"C", lotNumber:"C18", street:"KENTUCKY", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Mid", capacity:6, levels:null, lat:33.196314, lng:-96.615801, notes:"" },
+  { id:"c19-tennessee-public-on-street", name:"C19 TENNESSEE Public - On Street", polyIdx:65, sector:"C", lotNumber:"C19", street:"TENNESSEE", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Mid", capacity:4, levels:null, lat:33.19624, lng:-96.615034, notes:"" },
+  { id:"c12-henry-public-on-street", name:"C12 HENRY Public - On Street", polyIdx:66, sector:"C", lotNumber:"C12", street:"HENRY", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:6, levels:null, lat:33.195541, lng:-96.615782, notes:"" },
+  { id:"c27-davis-public-on-street", name:"C27 DAVIS Public - On Street", polyIdx:67, sector:"C", lotNumber:"C27", street:"DAVIS", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:8, levels:null, lat:33.195926, lng:-96.616888, notes:"" },
+  { id:"c32-davis-public-on-street", name:"C32 DAVIS Public - On Street", polyIdx:68, sector:"C", lotNumber:"C32", street:"DAVIS", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:6, levels:null, lat:33.195904, lng:-96.617833, notes:"" },
+  { id:"c31-church-public-on-street", name:"C31 CHURCH Public - On Street", polyIdx:69, sector:"C", lotNumber:"C31", street:"CHURCH", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:7, levels:null, lat:33.195588, lng:-96.617434, notes:"" },
+  { id:"c10-kentucky-public-on-street", name:"C10 KENTUCKY Public - On Street", polyIdx:70, sector:"C", lotNumber:"C10", street:"KENTUCKY", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:12, levels:null, lat:33.194975, lng:-96.615813, notes:"" },
+  { id:"d01-louisiana-public-on-street", name:"D01 LOUISIANA Public - On Street", polyIdx:71, sector:"D", lotNumber:"D01", street:"LOUISIANA", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Inner", capacity:0, levels:null, lat:33.197206, lng:-96.61453, notes:"" },
+  { id:"d16-tennessee-public-on-street", name:"D16 TENNESSEE Public - On Street", polyIdx:72, sector:"D", lotNumber:"D16", street:"TENNESSEE", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Inner", capacity:7, levels:null, lat:33.196877, lng:-96.614941, notes:"Tree Occlusion Northern Spot" },
+  { id:"lot-5-s", name:"Lot 5 - S", polyIdx:73, sector:"D", lotNumber:"D12", street:"CLOYD", category:"Public lot", lotType:"public off-street", quadrant:"D", ring:"Mid", capacity:17, levels:null, lat:33.196653, lng:-96.613905, notes:"" },
+  { id:"d02-louisiana-public-on-street", name:"D02 LOUISIANA Public - On Street", polyIdx:74, sector:"D", lotNumber:"D02", street:"LOUISIANA", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Mid", capacity:2, levels:null, lat:33.197208, lng:-96.613902, notes:"" },
+  { id:"131-s-chestnut-mckinney-building-maintenan", name:"131 S Chestnut - McKinney Building Maintenance (1)", polyIdx:75, sector:"D", lotNumber:"D07", street:"CLOYD", category:"Public lot", lotType:"public off-street", quadrant:"D", ring:"Outer", capacity:10, levels:null, lat:33.196548, lng:-96.613188, notes:"Under Construction 2019" },
+  { id:"d34-davis-public-on-street", name:"D34 DAVIS Public - On Street", polyIdx:76, sector:"D", lotNumber:"D34", street:"DAVIS", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Mid", capacity:7, levels:null, lat:33.195984, lng:-96.613775, notes:"" },
+  { id:"d18-johnson-public-on-street", name:"D18 JOHNSON Public - On Street", polyIdx:77, sector:"D", lotNumber:"D18", street:"JOHNSON", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Mid", capacity:4, levels:null, lat:33.196131, lng:-96.614215, notes:"" },
+  { id:"municipal-court-lot-west", name:"Municipal Court Lot West", polyIdx:78, sector:"D", lotNumber:"D17", street:"JOHNSON", category:"Public lot", lotType:"public off-street", quadrant:"D", ring:"Mid", capacity:27, levels:null, lat:33.196457, lng:-96.614346, notes:"Tree Occlusion North Spot Mid" },
+  { id:"d21-davis-public-on-street", name:"D21 DAVIS Public - On Street", polyIdx:79, sector:"D", lotNumber:"D21", street:"DAVIS", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Mid", capacity:5, levels:null, lat:33.195984, lng:-96.614659, notes:"" },
+  { id:"d23-tennessee-public-on-street", name:"D23 TENNESSEE Public - On Street", polyIdx:80, sector:"D", lotNumber:"D23", street:"TENNESSEE", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:14, levels:null, lat:33.194389, lng:-96.614986, notes:"" },
+  { id:"d22-tennessee-public-on-street", name:"D22 TENNESSEE Public - On Street", polyIdx:81, sector:"D", lotNumber:"D22", street:"TENNESSEE", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:17, levels:null, lat:33.19543, lng:-96.614921, notes:"" },
+  { id:"d33-davis-public-on-street", name:"D33 DAVIS Public - On Street", polyIdx:82, sector:"D", lotNumber:"D33", street:"DAVIS", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:4, levels:null, lat:33.195905, lng:-96.613933, notes:"" },
+  { id:"d24-howell-public-on-street", name:"D24 HOWELL Public - On Street", polyIdx:83, sector:"D", lotNumber:"D24", street:"HOWELL", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:12, levels:null, lat:33.1947, lng:-96.614189, notes:"" },
+  { id:"d25-howell-public-on-street", name:"D25 HOWELL Public - On Street", polyIdx:84, sector:"D", lotNumber:"D25", street:"HOWELL", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:12, levels:null, lat:33.194796, lng:-96.614161, notes:"" },
+  { id:"d27-anthony-public-on-street", name:"D27 ANTHONY Public - On Street", polyIdx:85, sector:"D", lotNumber:"D27", street:"ANTHONY", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:5, levels:null, lat:33.19412, lng:-96.613849, notes:"Tree Occlusion Eastern Spots" },
+  { id:"d26-chestnut-public-on-street", name:"D26 CHESTNUT Public - On Street", polyIdx:86, sector:"D", lotNumber:"D26", street:"CHESTNUT", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:12, levels:null, lat:33.194388, lng:-96.613533, notes:"C1 is sharper, but with tree occlusion" },
+  { id:"d30-chestnut-public-on-street", name:"D30 CHESTNUT Public - On Street", polyIdx:87, sector:"D", lotNumber:"D30", street:"CHESTNUT", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:9, levels:null, lat:33.195343, lng:-96.613489, notes:"" },
+  { id:"d29-chestnut-public-on-street", name:"D29 CHESTNUT Public - On Street", polyIdx:88, sector:"D", lotNumber:"D29", street:"CHESTNUT", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:22, levels:null, lat:33.195348, lng:-96.613361, notes:"" },
+  { id:"131-s-chestnut-mckinney-building-maintenan-2", name:"131 S Chestnut - McKinney Building Maintenance (2)", polyIdx:89, sector:"D", lotNumber:"D07", street:"CLOYD", category:"Public lot", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:10, levels:null, lat:33.196533, lng:-96.612783, notes:"Under Construction 2019" },
+  { id:"d31-davis-public-on-street", name:"D31 DAVIS Public - On Street", polyIdx:90, sector:"D", lotNumber:"D31", street:"DAVIS", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Outer", capacity:8, levels:null, lat:33.195899, lng:-96.612944, notes:"" },
+  { id:"d20-tennessee-public-on-street", name:"D20 TENNESSEE Public - On Street", polyIdx:91, sector:"D", lotNumber:"D20", street:"TENNESSEE", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Mid", capacity:7, levels:null, lat:33.196367, lng:-96.614942, notes:"" },
+  { id:"c19-kentucky-public-on-street", name:"C19 KENTUCKY Public - On Street", polyIdx:92, sector:"C", lotNumber:"C19", street:"KENTUCKY", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Mid", capacity:4, levels:null, lat:33.19649, lng:-96.615881, notes:"" },
+  { id:"c13-kentucky-public-on-street", name:"C13 KENTUCKY Public - On Street", polyIdx:93, sector:"C", lotNumber:"C13", street:"KENTUCKY", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:6, levels:null, lat:33.195546, lng:-96.615893, notes:"" },
+  { id:"c11-kentucky-public-on-street", name:"C11 KENTUCKY Public - On Street", polyIdx:94, sector:"C", lotNumber:"C11", street:"KENTUCKY", category:"On-street", lotType:"on-street", quadrant:"C", ring:"Outer", capacity:7, levels:null, lat:33.194927, lng:-96.615883, notes:"" },
+  { id:"a32-virginia-public-on-street", name:"A32 VIRGINIA Public - On Street", polyIdx:95, sector:"A", lotNumber:"A32", street:"VIRGINIA", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Mid", capacity:4, levels:null, lat:33.197911, lng:-96.616953, notes:"" },
+  { id:"a19-church-public-on-street", name:"A19 CHURCH Public - On Street", polyIdx:96, sector:"A", lotNumber:"A19", street:"CHURCH", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Outer", capacity:7, levels:null, lat:33.198972, lng:-96.617398, notes:"" },
+  { id:"d15-cloyd-public-on-street", name:"D15 CLOYD Public - On Street", polyIdx:97, sector:"D", lotNumber:"D15", street:"CLOYD", category:"On-street", lotType:"on-street", quadrant:"D", ring:"Inner", capacity:0, levels:null, lat:33.19662, lng:-96.614536, notes:"" },
+  { id:"city-hall-n", name:"City Hall N", polyIdx:98, sector:"E", lotNumber:"E03", street:"MAIN", category:"Public lot", lotType:"public off-street", quadrant:"", ring:"", capacity:157, levels:null, lat:33.199457, lng:-96.609852, notes:"" },
+  { id:"city-hall-e", name:"City Hall E", polyIdx:99, sector:"E", lotNumber:"E02", street:"MAIN", category:"Public lot", lotType:"public off-street", quadrant:"", ring:"", capacity:131, levels:null, lat:33.198791, lng:-96.609123, notes:"" },
+  { id:"tupps", name:"Tupps", polyIdx:100, sector:"F", lotNumber:"F03", street:"DUNGAN", category:"Public lot", lotType:"public off-street", quadrant:"", ring:"", capacity:205, levels:null, lat:33.195506, lng:-96.610496, notes:"" },
+  { id:"flour-mill-west-lot", name:"Flour Mill West Lot", polyIdx:101, sector:"E", lotNumber:"E05", street:"VIRGINIA", category:"Public lot", lotType:"public off-street", quadrant:"", ring:"", capacity:49, levels:null, lat:33.197624, lng:-96.610484, notes:"" },
+  { id:"city-hall-lot-old-1", name:"City Hall Lot (Old) (1)", polyIdx:102, sector:"B", lotNumber:"B15", street:"JOHNSON", category:"Public lot", lotType:"public off-street", quadrant:"B", ring:"Mid", capacity:29, levels:null, lat:33.198908, lng:-96.61438, notes:"Tree Occlusion North-East Spot" },
+  { id:"development-services-lot", name:"Development Services Lot", polyIdx:103, sector:"A", lotNumber:"A09", street:"HERNDON", category:"Public lot", lotType:"public off-street", quadrant:"A", ring:"Mid", capacity:40, levels:null, lat:33.198926, lng:-96.615455, notes:"Tree Occlusion Northern Spots" },
+  { id:"church-street-auditorium", name:"Church Street Auditorium", polyIdx:104, sector:"A", lotNumber:"A16", street:"WOOD", category:"Private lot", lotType:"private off-street", quadrant:"A", ring:"Outer", capacity:33, levels:null, lat:33.199533, lng:-96.616798, notes:"" },
+  { id:"first-united-methodist-church", name:"First United Methodist Church", polyIdx:105, sector:"A", lotNumber:"A17", street:"HUNT", category:"Private lot", lotType:"private off-street", quadrant:"A", ring:"Outer", capacity:30, levels:null, lat:33.199414, lng:-96.617832, notes:"" },
+  { id:"at-t-lot-1", name:"AT&T Lot (1)", polyIdx:106, sector:"A", lotNumber:"A15", street:"HUNT", category:"Private lot", lotType:"private off-street", quadrant:"A", ring:"Outer", capacity:20, levels:null, lat:33.199468, lng:-96.616342, notes:"" },
+  { id:"heard-craig", name:"Heard-Craig", polyIdx:107, sector:"A", lotNumber:"A20", street:"HERNDON", category:"Private lot", lotType:"private off-street", quadrant:"A", ring:"Mid", capacity:20, levels:null, lat:33.19873, lng:-96.617012, notes:"" },
+  { id:"207-n-church-offices", name:"207 N Church - Offices", polyIdx:108, sector:"A", lotNumber:"A23", street:"HERNDON", category:"Private lot", lotType:"private off-street", quadrant:"A", ring:"Outer", capacity:6, levels:null, lat:33.198686, lng:-96.617575, notes:"" },
+  { id:"enxchange-1", name:"Enxchange (1)", polyIdx:109, sector:"A", lotNumber:"A26", street:"BENGE", category:"Private lot", lotType:"private off-street", quadrant:"A", ring:"Outer", capacity:9, levels:null, lat:33.198397, lng:-96.618434, notes:"" },
+  { id:"w-herndon-the-legan-place", name:"W Herndon - The Legan Place", polyIdx:110, sector:"A", lotNumber:"A27", street:"HERNDON", category:"Private lot", lotType:"private off-street", quadrant:"A", ring:"Outer", capacity:9, levels:null, lat:33.198505, lng:-96.618664, notes:"" },
+  { id:"responsive-staffing", name:"Responsive Staffing", polyIdx:111, sector:"A", lotNumber:"A28", street:"VIRGINIA", category:"Private lot", lotType:"private off-street", quadrant:"A", ring:"Outer", capacity:38, levels:null, lat:33.198222, lng:-96.618958, notes:"" },
+  { id:"union-bear-1", name:"Union Bear (1)", polyIdx:112, sector:"A", lotNumber:"A30", street:"CHURCH", category:"Private lot", lotType:"private off-street", quadrant:"A", ring:"Outer", capacity:17, levels:null, lat:33.198215, lng:-96.617647, notes:"Tree Occlusion Northern Spots" },
+  { id:"union-bear-2", name:"Union Bear (2)", polyIdx:113, sector:"A", lotNumber:"A24", street:"BENGE", category:"Private lot", lotType:"private off-street", quadrant:"A", ring:"Outer", capacity:8, levels:null, lat:33.19819, lng:-96.618044, notes:"may have more, only 13 marked" },
+  { id:"sugarbacon-loyo-the-pub", name:"Sugarbacon/Loyo/The Pub", polyIdx:114, sector:"A", lotNumber:"A21", street:"HERNDON", category:"Private lot", lotType:"private off-street", quadrant:"A", ring:"Mid", capacity:17, levels:null, lat:33.198442, lng:-96.617119, notes:"" },
+  { id:"dancewear-lot", name:"Dancewear Lot", polyIdx:115, sector:"A", lotNumber:"A34", street:"HERNDON", category:"Private lot", lotType:"private off-street", quadrant:"A", ring:"Inner", capacity:16, levels:null, lat:33.198434, lng:-96.616522, notes:"" },
+  { id:"local-yocal-market", name:"Local Yocal Market", polyIdx:116, sector:"A", lotNumber:"A45", street:"HERNDON", category:"Private lot", lotType:"private off-street", quadrant:"A", ring:"Inner", capacity:4, levels:null, lat:33.198497, lng:-96.615101, notes:"" },
+  { id:"230-e-hunt", name:"230 E Hunt", polyIdx:117, sector:"B", lotNumber:"B12", street:"JOHNSON", category:"Private lot", lotType:"private off-street", quadrant:"B", ring:"Mid", capacity:24, levels:null, lat:33.199052, lng:-96.613744, notes:"" },
+  { id:"e-herndon-permit-lot", name:"E Herndon Permit Lot", polyIdx:118, sector:"B", lotNumber:"B11", street:"JOHNSON", category:"Private lot", lotType:"private off-street", quadrant:"B", ring:"Mid", capacity:53, levels:null, lat:33.198816, lng:-96.613948, notes:"" },
+  { id:"thomason-tire-1", name:"Thomason Tire (1)", polyIdx:119, sector:"B", lotNumber:"B08", street:"HUNT", category:"Private lot", lotType:"private off-street", quadrant:"B", ring:"Outer", capacity:21, levels:null, lat:33.199122, lng:-96.612636, notes:"" },
+  { id:"thomason-tire-2", name:"Thomason Tire (2)", polyIdx:120, sector:"B", lotNumber:"B09", street:"HERNDON", category:"Private lot", lotType:"private off-street", quadrant:"B", ring:"Outer", capacity:9, levels:null, lat:33.198688, lng:-96.612422, notes:"" },
+  { id:"koji", name:"Koji", polyIdx:121, sector:"B", lotNumber:"B26", street:"VIRGINIA", category:"Private lot", lotType:"private off-street", quadrant:"B", ring:"Outer", capacity:32, levels:null, lat:33.197683, lng:-96.612595, notes:"Tree Occlusion Southernmost Spots" },
+  { id:"225-e-virginia-1", name:"225 E Virginia (1)", polyIdx:122, sector:"B", lotNumber:"B13", street:"JOHNSON", category:"Private lot", lotType:"private off-street", quadrant:"B", ring:"Mid", capacity:42, levels:null, lat:33.198377, lng:-96.614005, notes:"Building Occlusion Western Row" },
+  { id:"doug-lynda-s-ski-shop", name:"Doug & Lynda's Ski Shop", polyIdx:123, sector:"B", lotNumber:"B23", street:"CHESTNUT", category:"Private lot", lotType:"private off-street", quadrant:"B", ring:"Mid", capacity:17, levels:null, lat:33.197793, lng:-96.613658, notes:"" },
+  { id:"225-e-virginia-2", name:"225 E Virginia (2)", polyIdx:124, sector:"B", lotNumber:"B10", street:"HERNDON", category:"Private lot", lotType:"private off-street", quadrant:"B", ring:"Mid", capacity:14, levels:null, lat:33.198243, lng:-96.613539, notes:"" },
+  { id:"antique-mall", name:"Antique Mall", polyIdx:125, sector:"B", lotNumber:"B14", street:"HERNDON", category:"Private lot", lotType:"private off-street", quadrant:"B", ring:"Inner", capacity:10, levels:null, lat:33.198538, lng:-96.614498, notes:"" },
+  { id:"206-s-tennessee-s-lot", name:"206 S Tennessee - S Lot", polyIdx:126, sector:"C", lotNumber:"C08", street:"HENRY", category:"Private lot", lotType:"private off-street", quadrant:"C", ring:"Outer", capacity:6, levels:null, lat:33.195389, lng:-96.615219, notes:"" },
+  { id:"206-s-tennessee-e-lot", name:"206 S Tennessee - E Lot", polyIdx:127, sector:"C", lotNumber:"C07", street:"TENNESSEE", category:"Private lot", lotType:"private off-street", quadrant:"C", ring:"Outer", capacity:4, levels:null, lat:33.195553, lng:-96.615133, notes:"" },
+  { id:"105-w-davis-big-green-egg", name:"105 W Davis - Big Green Egg", polyIdx:128, sector:"C", lotNumber:"C28", street:"WOOD", category:"Private lot", lotType:"private off-street", quadrant:"C", ring:"Outer", capacity:9, levels:null, lat:33.195785, lng:-96.616464, notes:"" },
+  { id:"206-s-kentucky-rear-lot", name:"206 S Kentucky - Rear Lot", polyIdx:129, sector:"C", lotNumber:"C14", street:"HENRY", category:"Private lot", lotType:"private off-street", quadrant:"C", ring:"Outer", capacity:24, levels:null, lat:33.195519, lng:-96.61642, notes:"Tree Occlusion" },
+  { id:"longhorn-office", name:"Longhorn Office", polyIdx:130, sector:"C", lotNumber:"C15", street:"DAVIS", category:"Private lot", lotType:"private off-street", quadrant:"C", ring:"Outer", capacity:6, levels:null, lat:33.195806, lng:-96.616103, notes:"Tree Occlusion Eastern Spots" },
+  { id:"gracepoint-fellowship-south", name:"GracePoint Fellowship South", polyIdx:131, sector:"C", lotNumber:"C41", street:"HENRY", category:"Private lot", lotType:"private off-street", quadrant:"C", ring:"Outer", capacity:44, levels:null, lat:33.195441, lng:-96.616988, notes:"" },
+  { id:"fearless-house-church", name:"Fearless House Church", polyIdx:132, sector:"C", lotNumber:"C42", street:"HENRY", category:"Private lot", lotType:"private off-street", quadrant:"C", ring:"Outer", capacity:44, levels:null, lat:33.195493, lng:-96.617629, notes:"" },
+  { id:"the-yard", name:"The Yard", polyIdx:133, sector:"C", lotNumber:"C29", street:"CHURCH", category:"Private lot", lotType:"private off-street", quadrant:"C", ring:"Mid", capacity:16, levels:null, lat:33.196095, lng:-96.617213, notes:"" },
+  { id:"130-s-kentucky-law-offices", name:"130 S Kentucky - Law Offices", polyIdx:134, sector:"C", lotNumber:"C17", street:"DAVIS", category:"Private lot", lotType:"private off-street", quadrant:"C", ring:"Mid", capacity:5, levels:null, lat:33.196093, lng:-96.616266, notes:"" },
+  { id:"mckinney-office-supply-private-lot", name:"McKinney Office Supply - Private Lot", polyIdx:135, sector:"C", lotNumber:"C25", street:"WOOD", category:"Private lot", lotType:"private off-street", quadrant:"C", ring:"Inner", capacity:12, levels:null, lat:33.196843, lng:-96.616373, notes:"" },
+  { id:"201-w-louisiana-private-lot", name:"201 W Louisiana - Private Lot", polyIdx:136, sector:"C", lotNumber:"C24", street:"CLOYD", category:"Private lot", lotType:"private off-street", quadrant:"C", ring:"Mid", capacity:25, levels:null, lat:33.196697, lng:-96.616886, notes:"" },
+  { id:"106-s-church-street-offices", name:"106 S Church Street Offices", polyIdx:137, sector:"C", lotNumber:"C37", street:"CHURCH", category:"Private lot", lotType:"private off-street", quadrant:"C", ring:"Outer", capacity:5, levels:null, lat:33.196764, lng:-96.617563, notes:"" },
+  { id:"baron-s-creek", name:"Baron's Creek", polyIdx:138, sector:"C", lotNumber:"C38", street:"CHURCH", category:"Private lot", lotType:"private off-street", quadrant:"C", ring:"Outer", capacity:10, levels:null, lat:33.19688, lng:-96.617648, notes:"" },
+  { id:"105-s-benge-medical-office", name:"105 S Benge Medical Office", polyIdx:139, sector:"C", lotNumber:"C35", street:"CLOYD", category:"Private lot", lotType:"private off-street", quadrant:"C", ring:"Outer", capacity:7, levels:null, lat:33.196629, lng:-96.617969, notes:"" },
+  { id:"the-parks-church-n-lot", name:"The Parks Church - N Lot", polyIdx:140, sector:"C", lotNumber:"C03", street:"CLOYD", category:"Private lot", lotType:"private off-street", quadrant:"C", ring:"Mid", capacity:16, levels:null, lat:33.196461, lng:-96.61521, notes:"is this 16 spots?" },
+  { id:"the-parks-church-s-lot", name:"The Parks Church - S Lot", polyIdx:141, sector:"C", lotNumber:"C04", street:"TENNESSEE", category:"Private lot", lotType:"private off-street", quadrant:"C", ring:"Mid", capacity:18, levels:null, lat:33.196274, lng:-96.615231, notes:"" },
+  { id:"casa", name:"CASA", polyIdx:142, sector:"C", lotNumber:"C16", street:"DAVIS", category:"Private lot", lotType:"private off-street", quadrant:"C", ring:"Mid", capacity:21, levels:null, lat:33.19613, lng:-96.615546, notes:"" },
+  { id:"s-johnson-e-cloyd-permit-lot", name:"S Johnson/E Cloyd Permit Lot", polyIdx:143, sector:"D", lotNumber:"D14", street:"JOHNSON", category:"Private lot", lotType:"private off-street", quadrant:"D", ring:"Inner", capacity:12, levels:null, lat:33.196755, lng:-96.61434, notes:"" },
+  { id:"101-113-s-chestnut-businesses", name:"101 - 113 S Chestnut Businesses", polyIdx:144, sector:"D", lotNumber:"D04", street:"CHESTNUT", category:"Private lot", lotType:"private off-street", quadrant:"D", ring:"Outer", capacity:10, levels:null, lat:33.196897, lng:-96.613349, notes:"" },
+  { id:"n-wood-st-private-lots", name:"N Wood St Private Lots", polyIdx:145, sector:"A", lotNumber:"A53", street:"WOOD", category:"Private lot", lotType:"private off-street", quadrant:"A", ring:"Mid", capacity:9, levels:null, lat:33.197651, lng:-96.616798, notes:"" },
+  { id:"harris-bldg", name:"Harris Bldg", polyIdx:146, sector:"A", lotNumber:"A50", street:"WOOD", category:"Private lot", lotType:"private off-street", quadrant:"A", ring:"Mid", capacity:5, levels:null, lat:33.197399, lng:-96.616689, notes:"" },
+  { id:"enxchange-2", name:"Enxchange (2)", polyIdx:147, sector:"A", lotNumber:"A25", street:"BENGE", category:"Private lot", lotType:"private off-street", quadrant:"A", ring:"Outer", capacity:2, levels:null, lat:33.198153, lng:-96.618285, notes:"Motor Court Awning Occlusion" },
+  { id:"a08-tennessee-public-on-street", name:"A08 TENNESSEE Public - On Street", polyIdx:148, sector:"A", lotNumber:"A08", street:"TENNESSEE", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Mid", capacity:4, levels:null, lat:33.198822, lng:-96.615048, notes:"" },
+  { id:"a10-kentucky-public-on-street", name:"A10 KENTUCKY Public - On Street", polyIdx:149, sector:"A", lotNumber:"A10", street:"KENTUCKY", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Mid", capacity:2, levels:null, lat:33.198755, lng:-96.615798, notes:"" },
+  { id:"a07-hunt-public-on-street", name:"A07 HUNT Public - On Street", polyIdx:150, sector:"A", lotNumber:"A07", street:"HUNT", category:"On-street", lotType:"on-street", quadrant:"A", ring:"Mid", capacity:7, levels:null, lat:33.199214, lng:-96.615336, notes:"" },
+  { id:"at-t-lot-2", name:"AT&T Lot (2)", polyIdx:151, sector:"A", lotNumber:"A03", street:"LOGAN", category:"Private lot", lotType:"private off-street", quadrant:"A", ring:"Outer", capacity:7, levels:null, lat:33.199927, lng:-96.616216, notes:"" },
+  { id:"city-hall-lot-old-2", name:"City Hall Lot (Old) (2)", polyIdx:152, sector:"B", lotNumber:"B16", street:"HERNDON", category:"Public lot", lotType:"public off-street", quadrant:"B", ring:"Mid", capacity:7, levels:null, lat:33.198683, lng:-96.614517, notes:"" },
+  { id:"b17-tennessee-public-on-street", name:"B17 TENNESSEE Public - On Street", polyIdx:153, sector:"B", lotNumber:"B17", street:"TENNESSEE", category:"On-street", lotType:"on-street", quadrant:"B", ring:"Mid", capacity:5, levels:null, lat:33.198802, lng:-96.614949, notes:"" },
+  { id:"hamm-s", name:"Hamm's", polyIdx:154, sector:"C", lotNumber:"C40", street:"BENGE", category:"Private lot", lotType:"private off-street", quadrant:"C", ring:"Outer", capacity:8, levels:null, lat:33.197048, lng:-96.618028, notes:"" },
+  { id:"gracepoint-fellowship", name:"GracePoint Fellowship", polyIdx:155, sector:"C", lotNumber:"C30", street:"CHURCH", category:"Private lot", lotType:"private off-street", quadrant:"C", ring:"Outer", capacity:13, levels:null, lat:33.195779, lng:-96.61731, notes:"Tree Occlusion Northern Spots" },
+  { id:"207-davis-private-lot", name:"207 Davis Private Lot", polyIdx:156, sector:"D", lotNumber:"D19", street:"JOHNSON", category:"Private lot", lotType:"private off-street", quadrant:"D", ring:"Mid", capacity:24, levels:null, lat:33.196184, lng:-96.614351, notes:"Tree Occlusion Northernmost 2 Spots" },
+  { id:"davis-leasing-center", name:"Davis - Leasing Center", polyIdx:157, sector:"D", lotNumber:"D32", street:"DAVIS", category:"Private lot", lotType:"private off-street", quadrant:"D", ring:"Outer", capacity:4, levels:null, lat:33.195903, lng:-96.61365, notes:"" },
+  { id:"131-s-chestnut-mckinney-building-maintenan-3", name:"131 S Chestnut - McKinney Building Maintenance (3)", polyIdx:158, sector:"D", lotNumber:"D10", street:"CLOYD", category:"Private lot", lotType:"private off-street", quadrant:"D", ring:"Outer", capacity:10, levels:null, lat:33.196367, lng:-96.613303, notes:"" },
+  { id:"surrey-house", name:"Surrey House", polyIdx:159, sector:"C", lotNumber:"C09", street:"TENNESSEE", category:"Private lot", lotType:"private off-street", quadrant:"C", ring:"Outer", capacity:30, levels:null, lat:33.194369, lng:-96.615376, notes:"" },
+  { id:"harrison-hull-mum-law-offices", name:"Harrison, Hull, & Mum Law Offices", polyIdx:160, sector:"A", lotNumber:"A35", street:"HERNDON", category:"Private lot", lotType:"private off-street", quadrant:"A", ring:"Inner", capacity:8, levels:null, lat:33.198437, lng:-96.61636, notes:"" },
+  { id:"c42-davis-private-off-street", name:"C42 DAVIS Private - Off Street", polyIdx:161, sector:"C", lotNumber:"C42", street:"DAVIS", category:"Private lot", lotType:"", quadrant:"", ring:"", capacity:44, levels:null, lat:33.196086, lng:-96.617695, notes:"C42_Fearless_House_Church.json" },
+  { id:"flour-mill-event-venue", name:"Flour Mill Event Venue", polyIdx:162, sector:"E", lotNumber:"E04", street:"VIRGINIA", category:"Private lot", lotType:"", quadrant:"", ring:"", capacity:33, levels:null, lat:33.197736, lng:-96.609442, notes:"E04_Flour_Mill_Event_Venue.json" },
+  { id:"mactown-smoke", name:"MacTown Smoke", polyIdx:163, sector:"E", lotNumber:"E06", street:"VIRGINIA", category:"Private lot", lotType:"", quadrant:"", ring:"", capacity:5, levels:null, lat:33.197794, lng:-96.61204, notes:"E06_MacTown_Smoke.json" },
+  { id:"hugs", name:"Hugs", polyIdx:164, sector:"F", lotNumber:"F01", street:"ANDREWS", category:"Private lot", lotType:"", quadrant:"", ring:"", capacity:42, levels:null, lat:33.195531, lng:-96.608885, notes:"F01_Hugs.json" },
+  { id:"andrews-on-street", name:"Andrews On Street", polyIdx:165, sector:"F", lotNumber:"F02", street:"ANDREWS", category:"On-street", lotType:"", quadrant:"", ring:"", capacity:7, levels:null, lat:33.195556, lng:-96.609345, notes:"F02_Andrews_On_Street.json" },
+  { id:"texas-laser", name:"Texas Laser", polyIdx:166, sector:"F", lotNumber:"F04", street:"WOLFE", category:"Private lot", lotType:"", quadrant:"", ring:"", capacity:2, levels:null, lat:33.194136, lng:-96.611133, notes:"F04_Texas_Laser.json" },
+  { id:"new-life-medical-equipment", name:"New Life Medical Equipment", polyIdx:167, sector:"F", lotNumber:"F05", street:"ANTHONY", category:"Private lot", lotType:"", quadrant:"", ring:"", capacity:3, levels:null, lat:33.194164, lng:-96.611708, notes:"F05_New_Life_Medical_Equipment.json" },
+  { id:"307-s-mcdonald-office-plaza", name:"307 S McDonald Office Plaza", polyIdx:168, sector:"F", lotNumber:"F06", street:"ANTHONY", category:"Private lot", lotType:"", quadrant:"", ring:"", capacity:30, levels:null, lat:33.194357, lng:-96.61227, notes:"F06_307_S_McDonald_Office_Plaza.json" },
+  { id:"performance-painting", name:"Performance Painting", polyIdx:169, sector:"F", lotNumber:"F07", street:"WILCOX", category:"Private lot", lotType:"", quadrant:"", ring:"", capacity:16, levels:null, lat:33.194879, lng:-96.612134, notes:"F07_Performance_Painting.json" },
+  { id:"collin-square", name:"Collin Square", polyIdx:170, sector:"F", lotNumber:"F08", street:"DAVIS", category:"Private lot", lotType:"", quadrant:"", ring:"", capacity:17, levels:null, lat:33.195746, lng:-96.612155, notes:"F08_Collin_Square.json" },
+  { id:"cookies", name:"Cookies", polyIdx:171, sector:"F", lotNumber:"F09", street:"LOUISIANA", category:"Private lot", lotType:"", quadrant:"", ring:"", capacity:31, levels:null, lat:33.196951, lng:-96.611758, notes:"F09_Cookies.json" },
+  { id:"eride-outfitters", name:"ERide Outfitters", polyIdx:172, sector:"F", lotNumber:"F10", street:"LOUISIANA", category:"Private lot", lotType:"", quadrant:"", ring:"", capacity:3, levels:null, lat:33.197355, lng:-96.611421, notes:"F10_ERide_Outfitters.json" },
+  { id:"local-yocal-grill", name:"Local Yocal Grill", polyIdx:173, sector:"F", lotNumber:"F11", street:"LOUISIANA", category:"Private lot", lotType:"", quadrant:"", ring:"", capacity:43, levels:null, lat:33.196941, lng:-96.611006, notes:"" },
 ];
 
 const CENTER = [33.1972, -96.6150];
@@ -313,6 +391,7 @@ const STORAGE_KEY = "mckinney_parking_round_v1";
 const C = { ink:"#14211c", brass:"#9a6a2f", signal:"#1f6f54", signalDim:"#3f8a6f", alert:"#a8401f" };
 
 let selectedId = null;
+let activeSector = "A";   // sector currently being surveyed
 let countMode = "occupied";
 let levelCounts = {};
 let records = load();
@@ -365,35 +444,118 @@ function baseStyle(feat) {
   return { color:"#8a8674", weight:1, fillColor:"#b7b29c", fillOpacity:0.14, dashArray:"3,3" }; // on-street
 }
 
-// Parking-lot polygons are loaded from an external file in the repo
-// (parking_lots.geojson, WGS84). Update that file to change the lots —
-// no need to touch this app. Falls back gracefully if it can't load.
-const GEOJSON_URL = "ParkingLots.geojson";
+// Map data is loaded from three files in the repo (all WGS84):
+//   parking_lots.geojson  — one polygon per parking facility (Sector field)
+//   sectors.geojson       — sector boundary polygons
+//   sector_routes.geojson — the walking/driving route for each sector
+// Update those files to change the data; no need to edit this app.
+const LOTS_URL    = "parking_lots.geojson";
+const SECTORS_URL = "sectors.geojson";
+const ROUTES_URL  = "sector_routes.geojson";
+
+let sectorLayer = null;   // sector boundary (selected only)
+let routeLayer  = null;   // sector route (selected only)
+let sectorsFC = null, routesFC = null;
 
 function buildLotOverlay(fc) {
   let _pidx = 0;
   lotLayer = L.geoJSON(fc, {
     style: baseStyle,
+    filter: () => true,
     onEachFeature: (feat, layer) => {
       const p = feat.properties;
       const myIdx = _pidx++;
       layer._polyIdx = myIdx;
       polyLayers[myIdx] = layer;
       const f = FACILITIES.find(ff => ff.polyIdx === myIdx);
-      const nm = (f && f.name) || p.DisplayName || p.LotName || "Parking";
-      layer.bindTooltip(nm + (p.CurrentPar!=null ? " \u00b7 " + p.CurrentPar + " spaces" : ""), { sticky:true });
+      const nm = (f && f.name) || p.DisplayName || "Parking";
+      const cap = f ? f.capacity : p.Capacity;
+      layer.bindTooltip(nm + (cap!=null ? " \u00b7 " + cap + " spaces" : ""), { sticky:true });
       layer.on("click", () => { if (f) selectFacility(f.id); });
     }
   }).addTo(map);
+  applySectorToMap();
 }
 
-fetch(GEOJSON_URL)
-  .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-  .then(fc => { buildLotOverlay(fc); })
-  .catch(err => {
-    console.error("Could not load " + GEOJSON_URL + ":", err);
-    flash("Couldn't load lot shapes (" + GEOJSON_URL + "). Pins and list still work.", "err");
+// Show only the lots in the active sector; hide the rest.
+function applySectorToMap() {
+  if (lotLayer) {
+    lotLayer.eachLayer(layer => {
+      const f = FACILITIES.find(ff => ff.polyIdx === layer._polyIdx);
+      const show = !activeSector || (f && f.sector === activeSector);
+      if (show) {
+        if (!map.hasLayer(layer)) layer.addTo(map);
+        layer.setStyle(baseStyle(layer.feature));
+      } else {
+        if (map.hasLayer(layer)) map.removeLayer(layer);
+      }
+    });
+  }
+  // pins
+  FACILITIES.forEach(f => {
+    const m = markers[f.id];
+    if (!m) return;
+    const show = !activeSector || f.sector === activeSector;
+    if (show && !map.hasLayer(m)) m.addTo(map);
+    if (!show && map.hasLayer(m)) map.removeLayer(m);
   });
+  // sector boundary
+  if (sectorLayer) { map.removeLayer(sectorLayer); sectorLayer = null; }
+  if (activeSector && sectorsFC) {
+    const feats = sectorsFC.features.filter(f => (f.properties.Sector||"").trim() === activeSector);
+    if (feats.length) {
+      sectorLayer = L.geoJSON({type:"FeatureCollection",features:feats}, {
+        style:{ color:"#14211c", weight:2, fill:false, dashArray:"6,4" },
+        interactive:false
+      }).addTo(map);
+      sectorLayer.bringToBack();
+    }
+  }
+  // route
+  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+  if (activeSector && routesFC) {
+    const feats = routesFC.features.filter(f => (f.properties.Sector||"").trim() === activeSector);
+    if (feats.length) {
+      routeLayer = L.geoJSON({type:"FeatureCollection",features:feats}, {
+        style:{ color:"#9a6a2f", weight:4, opacity:0.85, dashArray:"1,7", lineCap:"round" },
+        interactive:false
+      }).addTo(map);
+    }
+  }
+  refreshPolygons();
+}
+
+// Frame the map on the active sector
+function zoomToSector() {
+  if (!activeSector) return;
+  let b = null;
+  if (sectorLayer) b = sectorLayer.getBounds();
+  else if (lotLayer) {
+    b = L.latLngBounds([]);
+    let any=false;
+    lotLayer.eachLayer(layer => {
+      const f = FACILITIES.find(ff => ff.polyIdx === layer._polyIdx);
+      if (f && f.sector === activeSector) { b.extend(layer.getBounds()); any=true; }
+    });
+    if (!any) b=null;
+  }
+  if (b && b.isValid()) map.fitBounds(b, { animate:true, padding:[30,30] });
+}
+
+Promise.all([
+  fetch(LOTS_URL).then(r => { if(!r.ok) throw new Error(LOTS_URL+" HTTP "+r.status); return r.json(); }),
+  fetch(SECTORS_URL).then(r => r.ok ? r.json() : null).catch(() => null),
+  fetch(ROUTES_URL).then(r => r.ok ? r.json() : null).catch(() => null),
+])
+.then(([lots, sectors, routes]) => {
+  sectorsFC = sectors; routesFC = routes;
+  buildLotOverlay(lots);
+  if (activeSector) zoomToSector();
+})
+.catch(err => {
+  console.error("Could not load map data:", err);
+  flash("Couldn't load map data. The list still works.", "err");
+});
 
 function pinHtml(f, active) {
   const fill = active ? C.signal : (f.category === "Garage" ? C.brass : "#b0823f");
@@ -471,8 +633,11 @@ function renderFacList() {
   const cat = catFilter.value;
   const list = document.getElementById("facList");
   const matches = FACILITIES.filter(f =>
+    (!activeSector || f.sector === activeSector) &&
     (!cat || f.category === cat) &&
-    (!q || f.name.toLowerCase().includes(q) || (f.address||"").toLowerCase().includes(q))
+    (!q || f.name.toLowerCase().includes(q)
+        || (f.lotNumber||"").toLowerCase().includes(q)
+        || (f.street||"").toLowerCase().includes(q))
   );
   list.innerHTML = "";
   if (matches.length === 0) { list.innerHTML = '<div class="empty-list">No facilities match.</div>'; return; }
@@ -482,7 +647,7 @@ function renderFacList() {
     btn.className = "fac-chip" + (f.id === selectedId ? " active" : "");
     btn.innerHTML =
       '<span class="fac-main"><span class="fac-name">'+f.name+'</span>' +
-      '<span class="fac-meta">'+f.category+' · '+f.capacity+' spaces'+(f.quadrant?' · '+f.quadrant+'/'+(f.ring||'—'):'')+'</span></span>' +
+      '<span class="fac-meta">'+f.category+' · '+f.capacity+' spaces'+(f.lotNumber?' · '+f.lotNumber:'')+'</span></span>' +
       (done ? '<span class="counted-tag">✓ counted</span>' : '<span class="fac-cap">'+f.capacity+'</span>');
     btn.onclick = () => selectFacility(f.id);
     list.appendChild(btn);
@@ -637,6 +802,7 @@ function logCount() {
     id: Date.now()+"-"+Math.random().toString(36).slice(2,7),
     date:m.date, day:m.day, shift:m.shift, surveyor:m.surveyor,
     facilityId:f.id, facility:f.name, address:f.address, category:f.category,
+    sector:f.sector, lotNumber:f.lotNumber, street:f.street,
     lotType:f.lotType, quadrant:f.quadrant, ring:f.ring, capacity:f.capacity,
     countMode, countedValue:counted, occupied:d.occupied, vacant:d.vacant,
     percentOccupied:d.pct, byLevel, notes,
@@ -651,7 +817,7 @@ function logCount() {
   levelCounts = {}; window._notesDraft = "";
   flash("Logged "+f.name+" — "+d.occupied+"/"+f.capacity+" ("+d.pct+"%).");
   selectedId = null;
-  refreshPins(); refreshPolygons(); renderFacList(); renderCountPanel(); renderLog();
+  refreshPins(); refreshPolygons(); renderFacList(); renderCountPanel(); renderLog(); renderSectorChips();
 }
 
 // ── GEOLOCATION ──
@@ -729,10 +895,10 @@ function csvCell(v) {
 
 function exportSummary() {
   if (records.length === 0) { flash("Nothing to export yet.", "err"); return; }
-  const headers = ["SurveyDate","Day","Shift","Surveyor","Facility","Address","Category","LotType","Quadrant","Ring","Capacity","CountMode","CountedValue","Occupied","Vacant","PercentOccupied","Notes"];
+  const headers = ["SurveyDate","Day","Shift","Surveyor","Sector","Facility","LotNumber","Street","Category","LotType","Quadrant","Ring","Capacity","CountMode","CountedValue","Occupied","Vacant","PercentOccupied","Notes"];
   const lines = [headers.join(",")];
   records.forEach(r => {
-    lines.push([r.date,r.day,r.shift,r.surveyor,r.facility,r.address,r.category,r.lotType,r.quadrant,r.ring,r.capacity,r.countMode,r.countedValue,r.occupied,r.vacant,r.percentOccupied,r.notes].map(csvCell).join(","));
+    lines.push([r.date,r.day,r.shift,r.surveyor,r.sector,r.facility,r.lotNumber,r.street,r.category,r.lotType,r.quadrant,r.ring,r.capacity,r.countMode,r.countedValue,r.occupied,r.vacant,r.percentOccupied,r.notes].map(csvCell).join(","));
   });
   download(lines.join("\r\n"), "parking_count_summary_"+stamp()+".csv", "text/csv");
   flash("Exported summary — "+records.length+" rows.");
@@ -746,7 +912,8 @@ function exportJson() {
     const key = r.date+"|"+r.shift+"|"+r.surveyor;
     if (!groups[key]) groups[key] = { session:{ survey_date:r.date, day:r.day, shift:r.shift, surveyor:r.surveyor }, records:[] };
     groups[key].records.push({
-      facility:r.facility, address:r.address, category:r.category, lot_type:r.lotType,
+      facility:r.facility, sector:r.sector, lot_number:r.lotNumber, street:r.street,
+      address:r.address, category:r.category, lot_type:r.lotType,
       quadrant:r.quadrant, ring:r.ring, capacity:r.capacity, count_mode:r.countMode,
       counted_value:r.countedValue, occupied:r.occupied, vacant:r.vacant,
       percent_occupied:r.percentOccupied,
@@ -773,6 +940,41 @@ document.getElementById("exportJson").onclick = exportJson;
 
 [rDate, rShift, rSurveyor].forEach(el => el.addEventListener("change", () => { renderFacList(); renderLog(); }));
 
+// ── SECTOR SELECTOR ──
+const SECTORS = [...new Set(FACILITIES.map(f => f.sector).filter(Boolean))].sort();
+
+function renderSectorChips() {
+  const wrap = document.getElementById("sectorChips");
+  wrap.innerHTML = "";
+  SECTORS.forEach(s => {
+    const b = document.createElement("button");
+    b.className = "sector-chip" + (s === activeSector ? " on" : "");
+    b.textContent = s;
+    b.onclick = () => setSector(s);
+    wrap.appendChild(b);
+  });
+  const inSector = FACILITIES.filter(f => f.sector === activeSector);
+  const done = inSector.filter(f => countedInRound(f.id)).length;
+  const spaces = inSector.reduce((t,f) => t + (f.capacity||0), 0);
+  document.getElementById("sectorCount").textContent =
+    inSector.length + " facilities \u00b7 " + spaces + " spaces \u00b7 " + done + " counted";
+}
+
+function setSector(s) {
+  if (s === activeSector) return;
+  activeSector = s;
+  selectedId = null;            // selection doesn't carry across sectors
+  levelCounts = {};
+  window._notesDraft = "";
+  renderSectorChips();
+  applySectorToMap();
+  zoomToSector();
+  renderFacList();
+  renderCountPanel();
+  renderLog();
+}
+
+renderSectorChips();
 renderFacList();
 renderCountPanel();
 renderLog();
