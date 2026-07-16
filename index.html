@@ -44,12 +44,14 @@
   .sector-chip { min-width:44px; height:38px; padding:0 14px; border:1px solid var(--line); border-radius:8px; background:var(--soft); color:var(--ink); font-family:'Fraunces',Georgia,serif; font-size:17px; font-weight:600; cursor:pointer; transition:all .1s ease; }
   .sector-chip.on { background:var(--signal); border-color:var(--signal); color:#fff; box-shadow:0 2px 8px rgba(31,111,84,.28); }
   .sector-count { font-size:12px; color:var(--muted); }
-  .grid { display:grid; grid-template-columns:1.1fr 1fr; gap:16px; margin-bottom:16px; }
+  .grid { display:grid; grid-template-columns:1.1fr 1fr; gap:16px; margin-bottom:16px; align-items:start; }
 
-  .map-card { position:relative; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:8px; }
-  #map { height:330px; width:100%; border-radius:10px; background:#e8e6dc; }
+  .map-card { position:relative; display:flex; flex-direction:column; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:8px; }
+  /* Responsive map height: scales with viewport, clamped so it is never
+     a sliver on short screens nor absurd on tall ones. */
+  #map { flex:1 1 auto; height:clamp(300px, 52vh, 560px); width:100%; border-radius:10px; background:#e8e6dc; }
   .leaflet-container { font-family:inherit; border-radius:10px; }
-  .loc-btn { position:absolute; bottom:18px; left:18px; z-index:500; background:var(--ink); color:var(--paper); border:none; border-radius:8px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,.2); }
+  .loc-btn { position:absolute; bottom:20px; left:20px; z-index:500; background:var(--ink); color:var(--paper); border:none; border-radius:8px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,.2); }
   .loc-btn:disabled { opacity:.6; cursor:default; }
 
   .form-card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; display:flex; flex-direction:column; min-height:0; }
@@ -117,7 +119,20 @@
 
   .toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); color:#fff; padding:12px 20px; border-radius:9px; font-size:14px; font-weight:600; box-shadow:0 6px 24px rgba(0,0,0,.25); z-index:1000; max-width:90%; text-align:center; opacity:0; pointer-events:none; transition:opacity .2s ease; }
   .toast.show { opacity:1; }
-  @media (max-width:860px) { .grid { grid-template-columns:1fr; } .round-grid { grid-template-columns:repeat(2,1fr); } }
+  @media (max-width:860px) {
+    .grid { grid-template-columns:1fr; }
+    .round-grid { grid-template-columns:repeat(2,1fr); }
+    #map { height:clamp(280px, 44vh, 420px); }
+    .fac-list { max-height:none; }
+  }
+  @media (max-width:520px) {
+    .shell { padding:14px 12px 50px; }
+    .round-grid { grid-template-columns:1fr 1fr; }
+    h1.title { font-size:24px; }
+    #map { height:300px; }
+    .export-group { width:100%; }
+    .export-btn { flex:1; }
+  }
 </style>
 </head>
 <body>
@@ -386,7 +401,14 @@ const FACILITIES = [
   { id:"local-yocal-grill", name:"Local Yocal Grill", polyIdx:173, sector:"F", lotNumber:"F11", street:"LOUISIANA", category:"Private lot", lotType:"", quadrant:"", ring:"", capacity:43, levels:null, lat:33.196941, lng:-96.611006, notes:"" },
 ];
 
-const CENTER = [33.1972, -96.6150];
+// Initial view is derived from the facility data, not hardcoded — so the map
+// always opens where the lots actually are, even if the inventory changes.
+const CENTER = (() => {
+  const lats = FACILITIES.map(f => f.lat).filter(v => v != null);
+  const lngs = FACILITIES.map(f => f.lng).filter(v => v != null);
+  if (!lats.length) return [33.1972, -96.6139];
+  return [(Math.min(...lats)+Math.max(...lats))/2, (Math.min(...lngs)+Math.max(...lngs))/2];
+})();
 const STORAGE_KEY = "mckinney_parking_round_v1";
 const C = { ink:"#14211c", brass:"#9a6a2f", signal:"#1f6f54", signalDim:"#3f8a6f", alert:"#a8401f" };
 
@@ -467,12 +489,11 @@ function buildLotOverlay(fc) {
   let _pidx = 0;
   lotLayer = L.geoJSON(fc, {
     style: baseStyle,
-    filter: () => true,
     onEachFeature: (feat, layer) => {
       const p = feat.properties;
       const myIdx = _pidx++;
       layer._polyIdx = myIdx;
-      polyLayers[myIdx] = layer;
+      polyLayers[myIdx] = layer;          // permanent handle, survives hide/show
       const f = FACILITIES.find(ff => ff.polyIdx === myIdx);
       const nm = (f && f.name) || p.DisplayName || "Parking";
       const cap = f ? f.capacity : p.Capacity;
@@ -485,15 +506,21 @@ function buildLotOverlay(fc) {
 
 // Show only the lots in the active sector; hide the rest.
 function applySectorToMap() {
+  // Show/hide lot polygons via the GeoJSON group. Child layers belong to the
+  // group, so they must be added/removed with lotLayer.addLayer/removeLayer —
+  // using map.addLayer on a child detaches it from the group and it stops drawing.
   if (lotLayer) {
-    lotLayer.eachLayer(layer => {
+    Object.keys(polyLayers).forEach(k => {
+      const layer = polyLayers[k];
+      if (!layer) return;
       const f = FACILITIES.find(ff => ff.polyIdx === layer._polyIdx);
       const show = !activeSector || (f && f.sector === activeSector);
+      const on = lotLayer.hasLayer(layer);
       if (show) {
-        if (!map.hasLayer(layer)) layer.addTo(map);
+        if (!on) lotLayer.addLayer(layer);
         layer.setStyle(baseStyle(layer.feature));
-      } else {
-        if (map.hasLayer(layer)) map.removeLayer(layer);
+      } else if (on) {
+        lotLayer.removeLayer(layer);
       }
     });
   }
@@ -528,10 +555,14 @@ function zoomToSector() {
   if (!activeSector) return;
   let b = null;
   if (sectorLayer) b = sectorLayer.getBounds();
-  else if (lotLayer) {
+  else {
+    // fall back to the extent of this sector's lots (works even if some are
+    // detached from the group, since polyLayers holds every child)
     b = L.latLngBounds([]);
     let any=false;
-    lotLayer.eachLayer(layer => {
+    Object.keys(polyLayers).forEach(k => {
+      const layer = polyLayers[k];
+      if (!layer || !layer.getBounds) return;
       const f = FACILITIES.find(ff => ff.polyIdx === layer._polyIdx);
       if (f && f.sector === activeSector) { b.extend(layer.getBounds()); any=true; }
     });
@@ -548,6 +579,8 @@ Promise.all([
 .then(([lots, sectors, routes]) => {
   sectorsFC = sectors; routesFC = routes;
   buildLotOverlay(lots);
+  // size first, then frame — fitBounds against a stale viewport mis-centers
+  map.invalidateSize();
   if (activeSector) zoomToSector();
 })
 .catch(err => {
@@ -567,17 +600,36 @@ function pinHtml(f, active) {
 // No pin markers — the shapes are the map.
 setTimeout(() => map.invalidateSize(), 200);
 
+// Recalculate the map viewport whenever the layout changes (resize, rotate,
+// or the container being sized after first paint). Without this Leaflet keeps
+// a stale pixel size and renders tiles for the wrong area.
+let _resizeT;
+function refitMap() {
+  clearTimeout(_resizeT);
+  _resizeT = setTimeout(() => {
+    map.invalidateSize();
+    if (activeSector) zoomToSector();
+  }, 150);
+}
+window.addEventListener("resize", refitMap);
+window.addEventListener("orientationchange", refitMap);
+if (window.ResizeObserver) {
+  try { new ResizeObserver(refitMap).observe(document.getElementById("map")); } catch(e) {}
+}
+
 function refreshPins() { /* no pins — facilities are drawn as polygons */ }
 
 // Highlight the one polygon belonging to the selected facility (1:1 by index).
 function refreshPolygons() {
   if (!lotLayer) return;
   const sel = selectedId ? fac(selectedId) : null;
+  // only restyle layers currently attached to the group (hidden ones get
+  // styled on re-add by applySectorToMap)
   lotLayer.eachLayer(layer => {
     const isSel = sel && layer._polyIdx === sel.polyIdx;
     if (isSel) {
-      layer.setStyle({ color:"#14211c", weight:3, fillColor:"#1f6f54", fillOpacity:0.45, dashArray:null });
-      layer.bringToFront();
+      layer.setStyle({ color:"#14211c", weight:3.5, fillColor:"#1f6f54", fillOpacity:0.65 });
+      if (layer.bringToFront) layer.bringToFront();
     } else {
       layer.setStyle(baseStyle(layer.feature));
     }
