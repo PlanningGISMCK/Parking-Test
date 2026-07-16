@@ -458,6 +458,9 @@ const SECTOR_COLORS = {
 };
 function sectorColor(s) { return SECTOR_COLORS[s] || BRAND.med; }
 
+// Grey "fill" running down the middle of the cased route line.
+const ROUTE_FILL = "#8FA3AE";
+
 // Pick white or ink text for legibility on a given brand colour.
 // Gold and Bright Green are too light for white text.
 function readableOn(hex) {
@@ -590,7 +593,7 @@ function arrowIcon(color, deg) {
     className: "route-arrow",
     iconSize: [16,16], iconAnchor: [8,8],
     html: '<svg width="16" height="16" viewBox="0 0 16 16" style="transform:rotate('+deg+'deg);overflow:visible">'
-        + '<path d="M8 1 L13 12 L8 9.2 L3 12 Z" fill="'+color+'" stroke="#fff" stroke-width="1.1" stroke-linejoin="round"/>'
+        + '<path d="M8 1 L13 12 L8 9.2 L3 12 Z" fill="'+color+'" stroke="#fff" stroke-width="1.8" stroke-linejoin="round" paint-order="stroke"/>'
         + '</svg>'
   });
 }
@@ -662,10 +665,19 @@ function applySectorToMap() {
     const feats = routesFC.features.filter(f => (f.properties.Sector||"").trim() === activeSector);
     if (feats.length) {
       const col = sectorColor(activeSector);
-      routeLayer = L.geoJSON({type:"FeatureCollection",features:feats}, {
-        style:{ color:col, weight:4, opacity:0.9, lineCap:"round", lineJoin:"round" },
-        interactive:false
-      }).addTo(map);
+      // Cased line: a wider stroke in the sector colour acts as the outline,
+      // with a narrower grey stroke drawn on top as the fill.
+      const fc2 = {type:"FeatureCollection",features:feats};
+      routeLayer = L.layerGroup([
+        L.geoJSON(fc2, {                       // outline (sector colour)
+          style:{ color:col, weight:7, opacity:1, lineCap:"round", lineJoin:"round" },
+          interactive:false
+        }),
+        L.geoJSON(fc2, {                       // fill (grey)
+          style:{ color:ROUTE_FILL, weight:3.5, opacity:1, lineCap:"round", lineJoin:"round" },
+          interactive:false
+        })
+      ]).addTo(map);
       arrowLayer = buildRouteArrows(feats, col);
       if (arrowLayer) arrowLayer.addTo(map);
     }
@@ -1136,7 +1148,8 @@ function renderLegend() {
   const col = sectorColor(activeSector);
   el.innerHTML = '<div class="legend-hd">Sector ' + activeSector + '</div>' +
     '<div class="legend-row"><span class="legend-sw" style="background:'+col+';border:1px solid '+col+'"></span>Parking</div>' +
-    '<div class="legend-row"><svg class="legend-arrow" viewBox="0 0 16 16"><path d="M8 1 L13 12 L8 9.2 L3 12 Z" fill="'+col+'" stroke="#fff" stroke-width="1.1" stroke-linejoin="round"/></svg>Route direction</div>';
+    '<div class="legend-row"><span class="legend-sw" style="background:'+ROUTE_FILL+';border:2px solid '+col+';border-radius:2px"></span>Route</div>' +
+    '<div class="legend-row"><svg class="legend-arrow" viewBox="0 0 16 16"><path d="M8 1 L13 12 L8 9.2 L3 12 Z" fill="'+col+'" stroke="#fff" stroke-width="1.8" stroke-linejoin="round" paint-order="stroke"/></svg>Direction</div>';
 }
 
 function setSector(s) {
