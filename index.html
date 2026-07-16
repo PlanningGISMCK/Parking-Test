@@ -468,13 +468,6 @@ function readableOn(hex) {
   return L > 0.30 ? "#0C2C3B" : "#ffffff";
 }
 
-// One brand hue per parking type (fills the polygons).
-const TYPE_COLORS = {
-  "Garage":            { line:"#063A50", fill:"#084D69" },  // Dark Blue
-  "Public - Off Street":{ line:"#00655F", fill:"#00807A" },  // Teal
-  "Public - On Street": { line:"#1795A5", fill:"#28C0D2" },  // Light Blue
-  "Private - Off Street":{ line:"#A8761F", fill:"#C79129" }  // Gold
-};
 
 let selectedId = null;
 let activeSector = "A";   // sector currently being surveyed
@@ -523,16 +516,10 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 let lotLayer = null;
 const polyLayers = {};
 
-// Polygon fill is keyed to parking type, using McKinney brand colors.
-function baseStyle(feat) {
-  const p = feat.properties || {};
-  const t = TYPE_COLORS[p.Type];
-  if (t) {
-    const onStreet = p.Type === "Public - On Street";
-    return { color:t.line, weight:onStreet?3:2, fillColor:t.fill,
-             fillOpacity:onStreet?0.55:0.45 };
-  }
-  return { color:BRAND.med, weight:2, fillColor:BRAND.med, fillOpacity:0.4 };
+// All parking is drawn the same — tinted to the active sector's brand colour.
+function baseStyle() {
+  const col = sectorColor(activeSector);
+  return { color:col, weight:2, fillColor:col, fillOpacity:0.45 };
 }
 
 // Map data is loaded from three files in the repo (all WGS84):
@@ -764,7 +751,9 @@ function refreshPolygons() {
   lotLayer.eachLayer(layer => {
     const isSel = sel && layer._polyIdx === sel.polyIdx;
     if (isSel) {
-      layer.setStyle({ color:BRAND.yellow, weight:4, fillColor:BRAND.yellow, fillOpacity:0.7 });
+      // Every brand hue clashes with at least one sector colour, so the selected
+// lot is distinguished by treatment (dark outline + solid fill), not by hue.
+      layer.setStyle({ color:"#0C2C3B", weight:4, fillColor:sectorColor(activeSector), fillOpacity:0.85 });
       if (layer.bringToFront) layer.bringToFront();
     } else {
       layer.setStyle(baseStyle(layer.feature));
@@ -1144,13 +1133,9 @@ function renderSectorChips() {
 function renderLegend() {
   const el = document.getElementById("legend");
   if (!el) return;
-  const rows = Object.keys(TYPE_COLORS).map(t =>
-    '<div class="legend-row"><span class="legend-sw" style="background:'+TYPE_COLORS[t].fill+
-    ';border:1px solid '+TYPE_COLORS[t].line+'"></span>'+t.replace("Public - ","").replace("Private - ","Private ")+'</div>'
-  ).join("");
   const col = sectorColor(activeSector);
-  el.innerHTML = '<div class="legend-hd">Parking type</div>' + rows +
-    '<div class="legend-hd" style="margin-top:8px">Sector ' + activeSector + '</div>' +
+  el.innerHTML = '<div class="legend-hd">Sector ' + activeSector + '</div>' +
+    '<div class="legend-row"><span class="legend-sw" style="background:'+col+';border:1px solid '+col+'"></span>Parking</div>' +
     '<div class="legend-row"><svg class="legend-arrow" viewBox="0 0 16 16"><path d="M8 1 L13 12 L8 9.2 L3 12 Z" fill="'+col+'" stroke="#fff" stroke-width="1.1" stroke-linejoin="round"/></svg>Route direction</div>';
 }
 
