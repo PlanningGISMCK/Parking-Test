@@ -72,6 +72,11 @@
      a sliver on short screens nor absurd on tall ones. */
   #map { flex:1 1 auto; height:clamp(300px, 52vh, 560px); width:100%; border-radius:10px; background:#e8e6dc; }
   .leaflet-container { font-family:inherit; border-radius:10px; }
+  .basemap-picker { position:absolute; top:18px; left:60px; z-index:500; display:flex; gap:0; background:rgba(255,255,255,.94); border:1px solid var(--line); border-radius:8px; overflow:hidden; box-shadow:0 2px 10px rgba(8,77,105,.14); }
+  .base-btn { border:none; background:transparent; padding:7px 11px; font-family:inherit; font-size:11px; font-weight:600; color:var(--muted); cursor:pointer; border-right:1px solid var(--line); }
+  .base-btn:last-child { border-right:none; }
+  .base-btn.on { background:var(--brand-med); color:#fff; }
+  @media (max-width:520px) { .base-btn { padding:6px 8px; font-size:10px; } }
   .legend { position:absolute; top:18px; right:18px; z-index:500; background:rgba(255,255,255,.94); border:1px solid var(--line); border-radius:9px; padding:9px 11px; font-size:11px; line-height:1.5; box-shadow:0 2px 10px rgba(8,77,105,.14); }
   .legend-row { display:flex; align-items:center; gap:7px; white-space:nowrap; }
   .legend-sw { width:13px; height:13px; border-radius:3px; flex:none; }
@@ -209,6 +214,7 @@
   <div class="grid">
     <section class="map-card">
       <div id="map"></div>
+      <div class="basemap-picker" id="basemapPicker"></div>
       <div class="legend" id="legend"></div>
       <button class="loc-btn" id="locBtn">◎ Use my location</button>
     </section>
@@ -461,6 +467,11 @@ function sectorColor(s) { return SECTOR_COLORS[s] || BRAND.med; }
 // Grey "fill" running down the middle of the cased route line.
 const ROUTE_FILL = "#8FA3AE";
 
+// Satellite and Dark need light outlines; the ink outline disappears on them.
+function darkBasemap() {
+  return activeBasemap === "Satellite" || activeBasemap === "Dark";
+}
+
 // Pick white or ink text for legibility on a given brand colour.
 // Gold and Bright Green are too light for white text.
 function readableOn(hex) {
@@ -508,9 +519,59 @@ function derive(f, mode, counted) {
 
 // ── MAP ──
 const map = L.map("map", { zoomControl:true }).setView(CENTER, 16);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  attribution:"© OpenStreetMap contributors", maxZoom:19
-}).addTo(map);
+// ── BASEMAPS ─────────────────────────────────────────────────────
+// All free, no API key. "Light" is the default: muted greys let the
+// sector-coloured lots read clearly, which matters in daylight.
+const BASEMAPS = {
+  "Light": {
+    url:"https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    opts:{ attribution:'© OpenStreetMap · © CARTO', maxZoom:20, subdomains:"abcd" }
+  },
+  "Street": {
+    url:"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    opts:{ attribution:"© OpenStreetMap contributors", maxZoom:19 }
+  },
+  "Satellite": {
+    url:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    opts:{ attribution:"Imagery © Esri", maxZoom:19 }
+  },
+  "Dark": {
+    url:"https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    opts:{ attribution:'© OpenStreetMap · © CARTO', maxZoom:20, subdomains:"abcd" }
+  }
+};
+const BASEMAP_KEY = "mck_parking_basemap";
+let activeBasemap = (() => {
+  try { const v = localStorage.getItem(BASEMAP_KEY); if (v && BASEMAPS[v]) return v; } catch(e){}
+  return "Light";
+})();
+let baseLayer = null;
+
+function setBasemap(name) {
+  if (!BASEMAPS[name]) return;
+  activeBasemap = name;
+  try { localStorage.setItem(BASEMAP_KEY, name); } catch(e){}
+  if (baseLayer) map.removeLayer(baseLayer);
+  const b = BASEMAPS[name];
+  baseLayer = L.tileLayer(b.url, b.opts).addTo(map);
+  baseLayer.bringToBack();
+  renderBasemapPicker();
+  if (typeof refreshPolygons === "function") refreshPolygons();
+}
+setBasemap(activeBasemap);
+
+function renderBasemapPicker() {
+  const el = document.getElementById("basemapPicker");
+  if (!el) return;
+  el.innerHTML = "";
+  Object.keys(BASEMAPS).forEach(name => {
+    const b = document.createElement("button");
+    b.className = "base-btn" + (name === activeBasemap ? " on" : "");
+    b.textContent = name;
+    b.onclick = () => setBasemap(name);
+    el.appendChild(b);
+  });
+}
 
 // ════════════════════════════════════════════════════════════════
 //  PARKING-LOT POLYGON OVERLAY  (reprojected from the study geojson,
@@ -765,7 +826,8 @@ function refreshPolygons() {
     if (isSel) {
       // Every brand hue clashes with at least one sector colour, so the selected
 // lot is distinguished by treatment (dark outline + solid fill), not by hue.
-      layer.setStyle({ color:"#0C2C3B", weight:4, fillColor:sectorColor(activeSector), fillOpacity:0.85 });
+      layer.setStyle({ color:darkBasemap() ? "#ffffff" : "#0C2C3B", weight:4,
+                       fillColor:sectorColor(activeSector), fillOpacity:0.85 });
       if (layer.bringToFront) layer.bringToFront();
     } else {
       layer.setStyle(baseStyle(layer.feature));
