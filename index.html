@@ -467,6 +467,36 @@ function sectorColor(s) { return SECTOR_COLORS[s] || BRAND.med; }
 // Grey "fill" running down the middle of the cased route line.
 const ROUTE_FILL = "#8FA3AE";
 
+// Deepen a colour toward black by `amount` (0 = colour, 1 = black).
+function shadeToward(hex, amount) {
+  const h = hex.replace("#","");
+  const mix = i => Math.round(parseInt(h.substr(i,2),16) * (1 - amount));
+  const to2 = n => n.toString(16).padStart(2,"0");
+  return "#" + to2(mix(0)) + to2(mix(2)) + to2(mix(4));
+}
+
+// Outline colour for a sector: deepen the light hues so they stay visible
+// against the near-white fill.
+function outlineFor(hex) {
+  const h = hex.replace("#","");
+  const ch = i => { const c = parseInt(h.substr(i,2),16)/255;
+                    return c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4); };
+  const L = 0.2126*ch(0) + 0.7152*ch(2) + 0.0722*ch(4);
+  return L > 0.28 ? shadeToward(hex, 0.32) : hex;
+}
+
+// Mix a brand colour toward white. amount 0 = the colour, 1 = pure white.
+// Used so lot fills stay tied to the sector hue while reading as near-white.
+function tintToward(hex, amount) {
+  const h = hex.replace("#","");
+  const mix = i => {
+    const c = parseInt(h.substr(i,2),16);
+    return Math.round(c + (255 - c) * amount);
+  };
+  const to2 = n => n.toString(16).padStart(2,"0");
+  return "#" + to2(mix(0)) + to2(mix(2)) + to2(mix(4));
+}
+
 // Satellite and Dark need light outlines; the ink outline disappears on them.
 function darkBasemap() {
   return activeBasemap === "Satellite" || activeBasemap === "Dark";
@@ -590,9 +620,14 @@ function renderBasemapPicker() {
 // ════════════════════════════════════════════════════════════════
 
 // All parking is drawn the same — tinted to the active sector's brand colour.
+// Lots read as near-white shapes with a sector-coloured outline: the outline
+// carries the identity, the pale fill keeps the basemap legible underneath.
 function baseStyle() {
   const col = sectorColor(activeSector);
-  return { color:col, weight:2, fillColor:col, fillOpacity:0.45 };
+  // Light sector hues (Bright Green, Gold) need a deepened outline or they
+  // wash out against their own pale fill.
+  return { color:outlineFor(col), weight:2,
+           fillColor:tintToward(col, 0.88), fillOpacity:0.9 };
 }
 
 // Map data is loaded from three files in the repo (all WGS84):
@@ -833,7 +868,7 @@ function refreshPolygons() {
       // Every brand hue clashes with at least one sector colour, so the selected
 // lot is distinguished by treatment (dark outline + solid fill), not by hue.
       layer.setStyle({ color:darkBasemap() ? "#ffffff" : "#0C2C3B", weight:4,
-                       fillColor:sectorColor(activeSector), fillOpacity:0.85 });
+                       fillColor:sectorColor(activeSector), fillOpacity:0.75 });
       if (layer.bringToFront) layer.bringToFront();
     } else {
       layer.setStyle(baseStyle(layer.feature));
