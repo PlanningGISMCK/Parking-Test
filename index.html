@@ -519,6 +519,16 @@ function derive(f, mode, counted) {
 
 // ── MAP ──
 const map = L.map("map", { zoomControl:true }).setView(CENTER, 16);
+// ── MAP LAYER HANDLES ────────────────────────────────────────────
+// Declared before any code that touches them. These are `let`, so anything
+// running earlier in the file would hit a temporal-dead-zone error.
+let lotLayer    = null;   // GeoJSON group of lot polygons
+const polyLayers = {};    // polyIdx -> child layer (survives hide/show)
+let sectorLayer = null;   // sector boundary (active sector only)
+let arrowLayer  = null;   // direction arrows along the route
+let routeLayer  = null;   // sector route (active sector only)
+let baseLayer   = null;   // current basemap tiles
+
 // ── BASEMAPS ─────────────────────────────────────────────────────
 // All free, no API key. "Light" is the default: muted greys let the
 // sector-coloured lots read clearly, which matters in daylight.
@@ -545,7 +555,6 @@ let activeBasemap = (() => {
   try { const v = localStorage.getItem(BASEMAP_KEY); if (v && BASEMAPS[v]) return v; } catch(e){}
   return "Light";
 })();
-let baseLayer = null;
 
 function setBasemap(name) {
   if (!BASEMAPS[name]) return;
@@ -556,7 +565,9 @@ function setBasemap(name) {
   baseLayer = L.tileLayer(b.url, b.opts).addTo(map);
   baseLayer.bringToBack();
   renderBasemapPicker();
-  if (typeof refreshPolygons === "function") refreshPolygons();
+  // Re-apply selection styling — the outline flips on dark basemaps.
+  // No-ops on the first call, before any lots have loaded.
+  refreshPolygons();
 }
 setBasemap(activeBasemap);
 
@@ -577,8 +588,6 @@ function renderBasemapPicker() {
 //  PARKING-LOT POLYGON OVERLAY  (reprojected from the study geojson,
 //  EPSG:2276 → WGS84; private lots removed; segments named by zone)
 // ════════════════════════════════════════════════════════════════
-let lotLayer = null;
-const polyLayers = {};
 
 // All parking is drawn the same — tinted to the active sector's brand colour.
 function baseStyle() {
@@ -595,9 +604,6 @@ const LOTS_URL    = "parking_lots.geojson";
 const SECTORS_URL = "sectors.geojson";
 const ROUTES_URL  = "sector_routes.geojson";
 
-let sectorLayer = null;   // sector boundary (selected only)
-let arrowLayer  = null;   // direction arrows along the route
-let routeLayer  = null;   // sector route (selected only)
 let sectorsFC = null, routesFC = null;
 
 function buildLotOverlay(fc) {
