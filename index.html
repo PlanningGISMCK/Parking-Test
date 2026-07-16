@@ -9,9 +9,30 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --ink:#14211c; --paper:#f6f4ec; --panel:#fff; --line:#d9d4c4;
-    --brass:#9a6a2f; --brass-deep:#6e4a1d; --signal:#1f6f54;
-    --signal-dim:#3f8a6f; --alert:#a8401f; --muted:#6b6657; --soft:#efece1;
+    /* City of McKinney brand palette
+       Primary:   Dark Blue #084D69 · Medium Blue #1D7698
+       Secondary: Yellow #F6B319 · Orange #D87A30 · Teal #00807A
+                  Light Blue #28C0D2 · Gold #C79129
+       Accent:    Bright Green #8DC63F · Turquoise #4CA5AB
+                  Red #C92027 · Maroon #981B1E   (use sparingly, <10%) */
+    --brand-dark:#084D69;  --brand-med:#1D7698;
+    --brand-yellow:#F6B319; --brand-orange:#D87A30; --brand-teal:#00807A;
+    --brand-ltblue:#28C0D2; --brand-gold:#C79129;
+    --brand-green:#8DC63F;  --brand-turq:#4CA5AB;
+    --brand-red:#C92027;    --brand-maroon:#981B1E;
+
+    /* Semantic roles */
+    --ink:#0C2C3B;          /* deep blue-black, derived from Dark Blue */
+    --paper:#F4F7F9;        /* cool off-white to sit under the blues */
+    --panel:#fff;
+    --line:#CBD9E1;
+    --brass:var(--brand-med);       /* primary action */
+    --brass-deep:var(--brand-dark); /* headings, emphasis */
+    --signal:var(--brand-teal);     /* selection / success */
+    --signal-dim:#00655F;
+    --alert:var(--brand-red);       /* over-capacity, errors */
+    --muted:#5A7684;
+    --soft:#EBF1F5;
   }
   * { box-sizing:border-box; }
   html,body { margin:0; padding:0; }
@@ -51,6 +72,12 @@
      a sliver on short screens nor absurd on tall ones. */
   #map { flex:1 1 auto; height:clamp(300px, 52vh, 560px); width:100%; border-radius:10px; background:#e8e6dc; }
   .leaflet-container { font-family:inherit; border-radius:10px; }
+  .legend { position:absolute; top:18px; right:18px; z-index:500; background:rgba(255,255,255,.94); border:1px solid var(--line); border-radius:9px; padding:9px 11px; font-size:11px; line-height:1.5; box-shadow:0 2px 10px rgba(8,77,105,.14); }
+  .legend-row { display:flex; align-items:center; gap:7px; white-space:nowrap; }
+  .legend-sw { width:13px; height:13px; border-radius:3px; flex:none; }
+  .legend-hd { font-size:9px; letter-spacing:.11em; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:4px; }
+  .legend-arrow { width:13px; height:13px; flex:none; }
+  @media (max-width:520px) { .legend { display:none; } }
   .loc-btn { position:absolute; bottom:20px; left:20px; z-index:500; background:var(--ink); color:var(--paper); border:none; border-radius:8px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,.2); }
   .loc-btn:disabled { opacity:.6; cursor:default; }
 
@@ -182,6 +209,7 @@
   <div class="grid">
     <section class="map-card">
       <div id="map"></div>
+      <div class="legend" id="legend"></div>
       <button class="loc-btn" id="locBtn">◎ Use my location</button>
     </section>
 
@@ -410,7 +438,43 @@ const CENTER = (() => {
   return [(Math.min(...lats)+Math.max(...lats))/2, (Math.min(...lngs)+Math.max(...lngs))/2];
 })();
 const STORAGE_KEY = "mckinney_parking_round_v1";
-const C = { ink:"#14211c", brass:"#9a6a2f", signal:"#1f6f54", signalDim:"#3f8a6f", alert:"#a8401f" };
+const C = { ink:"#0C2C3B", brass:"#1D7698", signal:"#00807A", signalDim:"#00655F", alert:"#C92027" };
+
+// ── McKinney brand palette ────────────────────────────────────────
+const BRAND = {
+  dark:"#084D69", med:"#1D7698",
+  yellow:"#F6B319", orange:"#D87A30", teal:"#00807A", ltblue:"#28C0D2", gold:"#C79129",
+  green:"#8DC63F", turq:"#4CA5AB", red:"#C92027", maroon:"#981B1E"
+};
+
+// One distinct brand hue per sector.
+const SECTOR_COLORS = {
+  A:"#1D7698",  // Medium Blue
+  B:"#D87A30",  // Orange
+  C:"#00807A",  // Teal
+  D:"#C79129",  // Gold
+  E:"#8DC63F",  // Bright Green
+  F:"#981B1E"   // Maroon
+};
+function sectorColor(s) { return SECTOR_COLORS[s] || BRAND.med; }
+
+// Pick white or ink text for legibility on a given brand colour.
+// Gold and Bright Green are too light for white text.
+function readableOn(hex) {
+  const h = hex.replace("#","");
+  const ch = i => { const c = parseInt(h.substr(i,2),16)/255;
+                    return c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4); };
+  const L = 0.2126*ch(0) + 0.7152*ch(2) + 0.0722*ch(4);
+  return L > 0.30 ? "#0C2C3B" : "#ffffff";
+}
+
+// One brand hue per parking type (fills the polygons).
+const TYPE_COLORS = {
+  "Garage":            { line:"#063A50", fill:"#084D69" },  // Dark Blue
+  "Public - Off Street":{ line:"#00655F", fill:"#00807A" },  // Teal
+  "Public - On Street": { line:"#1795A5", fill:"#28C0D2" },  // Light Blue
+  "Private - Off Street":{ line:"#A8761F", fill:"#C79129" }  // Gold
+};
 
 let selectedId = null;
 let activeSector = "A";   // sector currently being surveyed
@@ -459,17 +523,16 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 let lotLayer = null;
 const polyLayers = {};
 
+// Polygon fill is keyed to parking type, using McKinney brand colors.
 function baseStyle(feat) {
   const p = feat.properties || {};
-  const t = (p.Type || "");
-  if (t.indexOf("Garage") >= 0)
-    return { color:"#5a3c17", weight:2, fillColor:"#9a6a2f", fillOpacity:0.55 };
-  if (t.indexOf("Public - Off") >= 0)
-    return { color:"#175640", weight:2, fillColor:"#1f6f54", fillOpacity:0.42 };
-  if (t.indexOf("Private") >= 0)
-    return { color:"#7a7566", weight:1.5, fillColor:"#b7b29c", fillOpacity:0.35 };
-  // on-street
-  return { color:"#8a5a20", weight:2.5, fillColor:"#b0823f", fillOpacity:0.5 };
+  const t = TYPE_COLORS[p.Type];
+  if (t) {
+    const onStreet = p.Type === "Public - On Street";
+    return { color:t.line, weight:onStreet?3:2, fillColor:t.fill,
+             fillOpacity:onStreet?0.55:0.45 };
+  }
+  return { color:BRAND.med, weight:2, fillColor:BRAND.med, fillOpacity:0.4 };
 }
 
 // Map data is loaded from three files in the repo (all WGS84):
@@ -482,6 +545,7 @@ const SECTORS_URL = "sectors.geojson";
 const ROUTES_URL  = "sector_routes.geojson";
 
 let sectorLayer = null;   // sector boundary (selected only)
+let arrowLayer  = null;   // direction arrows along the route
 let routeLayer  = null;   // sector route (selected only)
 let sectorsFC = null, routesFC = null;
 
@@ -502,6 +566,74 @@ function buildLotOverlay(fc) {
     }
   }).addTo(map);
   applySectorToMap();
+}
+
+// ── ROUTE DIRECTION ARROWS ───────────────────────────────────────
+// Leaflet has no built-in arrow decorator, so we walk each route line and
+// drop a chevron every ~ARROW_SPACING_M metres, rotated to the direction of
+// travel. Arrows are rebuilt on zoom so spacing stays readable.
+const ARROW_SPACING_M = 55;
+
+function _metresBetween(a, b) {
+  // a,b = [lng,lat]; equirectangular approximation is plenty at this scale
+  const R = 6371000, toRad = Math.PI/180;
+  const x = (b[0]-a[0]) * toRad * Math.cos(((a[1]+b[1])/2) * toRad);
+  const y = (b[1]-a[1]) * toRad;
+  return Math.sqrt(x*x + y*y) * R;
+}
+
+function _bearing(a, b) {
+  // screen-space angle so the chevron points along the drawn line
+  const toRad = Math.PI/180;
+  const x = (b[0]-a[0]) * Math.cos(((a[1]+b[1])/2) * toRad);
+  const y = (b[1]-a[1]);
+  return Math.atan2(x, y) * 180/Math.PI;   // 0 = north, clockwise
+}
+
+function _linesOf(feat) {
+  const g = feat.geometry;
+  if (!g) return [];
+  if (g.type === "LineString") return [g.coordinates];
+  if (g.type === "MultiLineString") return g.coordinates;
+  return [];
+}
+
+function arrowIcon(color, deg) {
+  return L.divIcon({
+    className: "route-arrow",
+    iconSize: [16,16], iconAnchor: [8,8],
+    html: '<svg width="16" height="16" viewBox="0 0 16 16" style="transform:rotate('+deg+'deg);overflow:visible">'
+        + '<path d="M8 1 L13 12 L8 9.2 L3 12 Z" fill="'+color+'" stroke="#fff" stroke-width="1.1" stroke-linejoin="round"/>'
+        + '</svg>'
+  });
+}
+
+function buildRouteArrows(feats, color) {
+  const group = L.layerGroup();
+  let placed = 0;
+  feats.forEach(feat => {
+    _linesOf(feat).forEach(line => {
+      let carry = ARROW_SPACING_M * 0.5;   // offset so arrows don't sit on the start
+      for (let i = 0; i < line.length - 1; i++) {
+        const a = line[i], b = line[i+1];
+        const segLen = _metresBetween(a, b);
+        if (segLen < 0.01) continue;
+        const deg = _bearing(a, b);
+        let d = carry;
+        while (d <= segLen) {
+          const t = d / segLen;
+          const lng = a[0] + (b[0]-a[0]) * t;
+          const lat = a[1] + (b[1]-a[1]) * t;
+          L.marker([lat,lng], { icon:arrowIcon(color, deg), interactive:false,
+                                keyboard:false, zIndexOffset:400 }).addTo(group);
+          placed++;
+          d += ARROW_SPACING_M;
+        }
+        carry = d - segLen;   // carry the remainder into the next segment
+      }
+    });
+  });
+  return placed ? group : null;
 }
 
 // Show only the lots in the active sector; hide the rest.
@@ -530,21 +662,25 @@ function applySectorToMap() {
     const feats = sectorsFC.features.filter(f => (f.properties.Sector||"").trim() === activeSector);
     if (feats.length) {
       sectorLayer = L.geoJSON({type:"FeatureCollection",features:feats}, {
-        style:{ color:"#14211c", weight:2, fill:false, dashArray:"6,4" },
+        style:{ color:sectorColor(activeSector), weight:2.5, fill:false, dashArray:"7,5", opacity:0.9 },
         interactive:false
       }).addTo(map);
       sectorLayer.bringToBack();
     }
   }
-  // route
+  // route — drawn in the sector's colour, with direction arrows along it
   if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+  if (arrowLayer) { map.removeLayer(arrowLayer); arrowLayer = null; }
   if (activeSector && routesFC) {
     const feats = routesFC.features.filter(f => (f.properties.Sector||"").trim() === activeSector);
     if (feats.length) {
+      const col = sectorColor(activeSector);
       routeLayer = L.geoJSON({type:"FeatureCollection",features:feats}, {
-        style:{ color:"#9a6a2f", weight:4, opacity:0.85, dashArray:"1,7", lineCap:"round" },
+        style:{ color:col, weight:4, opacity:0.9, lineCap:"round", lineJoin:"round" },
         interactive:false
       }).addTo(map);
+      arrowLayer = buildRouteArrows(feats, col);
+      if (arrowLayer) arrowLayer.addTo(map);
     }
   }
   refreshPolygons();
@@ -589,7 +725,7 @@ Promise.all([
 });
 
 function pinHtml(f, active) {
-  const fill = active ? C.signal : (f.category === "Garage" ? C.brass : "#b0823f");
+  const fill = active ? C.signal : (f.category === "Garage" ? C.brass : "#C79129");
   const ring = active ? "#fff" : "rgba(255,255,255,0.85)";
   return '<svg width="24" height="32" viewBox="0 0 26 34" xmlns="http://www.w3.org/2000/svg">' +
     '<path d="M13 0C5.8 0 0 5.6 0 12.6 0 22 13 34 13 34s13-12 13-21.4C26 5.6 20.2 0 13 0Z" fill="'+fill+'"/>' +
@@ -628,7 +764,7 @@ function refreshPolygons() {
   lotLayer.eachLayer(layer => {
     const isSel = sel && layer._polyIdx === sel.polyIdx;
     if (isSel) {
-      layer.setStyle({ color:"#14211c", weight:3.5, fillColor:"#1f6f54", fillOpacity:0.65 });
+      layer.setStyle({ color:BRAND.yellow, weight:4, fillColor:BRAND.yellow, fillOpacity:0.7 });
       if (layer.bringToFront) layer.bringToFront();
     } else {
       layer.setStyle(baseStyle(layer.feature));
@@ -987,6 +1123,14 @@ function renderSectorChips() {
     const b = document.createElement("button");
     b.className = "sector-chip" + (s === activeSector ? " on" : "");
     b.textContent = s;
+    const col = sectorColor(s);
+    if (s === activeSector) {
+      b.style.background = col; b.style.borderColor = col;
+      b.style.color = readableOn(col);   // light brand hues need dark text
+      b.style.boxShadow = "0 2px 8px " + col + "55";
+    } else {
+      b.style.color = col; b.style.borderColor = col + "66";
+    }
     b.onclick = () => setSector(s);
     wrap.appendChild(b);
   });
@@ -997,6 +1141,19 @@ function renderSectorChips() {
     inSector.length + " facilities \u00b7 " + spaces + " spaces \u00b7 " + done + " counted";
 }
 
+function renderLegend() {
+  const el = document.getElementById("legend");
+  if (!el) return;
+  const rows = Object.keys(TYPE_COLORS).map(t =>
+    '<div class="legend-row"><span class="legend-sw" style="background:'+TYPE_COLORS[t].fill+
+    ';border:1px solid '+TYPE_COLORS[t].line+'"></span>'+t.replace("Public - ","").replace("Private - ","Private ")+'</div>'
+  ).join("");
+  const col = sectorColor(activeSector);
+  el.innerHTML = '<div class="legend-hd">Parking type</div>' + rows +
+    '<div class="legend-hd" style="margin-top:8px">Sector ' + activeSector + '</div>' +
+    '<div class="legend-row"><svg class="legend-arrow" viewBox="0 0 16 16"><path d="M8 1 L13 12 L8 9.2 L3 12 Z" fill="'+col+'" stroke="#fff" stroke-width="1.1" stroke-linejoin="round"/></svg>Route direction</div>';
+}
+
 function setSector(s) {
   if (s === activeSector) return;
   activeSector = s;
@@ -1004,6 +1161,7 @@ function setSector(s) {
   levelCounts = {};
   window._notesDraft = "";
   renderSectorChips();
+  renderLegend();
   applySectorToMap();
   zoomToSector();
   renderFacList();
@@ -1012,6 +1170,7 @@ function setSector(s) {
 }
 
 renderSectorChips();
+renderLegend();
 renderFacList();
 renderCountPanel();
 renderLog();
