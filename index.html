@@ -136,6 +136,29 @@
   h2.log-title { font-family:'Fraunces',Georgia,serif; font-size:20px; margin:0; font-weight:600; }
   .export-group { display:flex; gap:8px; }
   .export-btn { background:transparent; color:var(--brass-deep); border:1.5px solid var(--brass); border-radius:7px; padding:8px 12px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
+
+  /* ── Modals (stored data + confirm) ── */
+  .modal-backdrop { position:fixed; inset:0; z-index:2000; background:rgba(12,44,59,.55); display:flex; align-items:center; justify-content:center; padding:20px; }
+  .modal { background:var(--panel); border-radius:14px; width:100%; max-width:520px; max-height:82vh; display:flex; flex-direction:column; box-shadow:0 18px 50px rgba(8,77,105,.35); padding:20px; }
+  .modal-sm { max-width:400px; }
+  .modal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+  .modal-title { font-family:'Fraunces',Georgia,serif; font-size:20px; color:var(--brass-deep); margin:0; }
+  .modal-x { background:none; border:none; font-size:26px; line-height:1; color:var(--muted); cursor:pointer; padding:0 4px; }
+  .modal-sub { font-size:13px; color:var(--muted); margin:6px 0 14px; }
+  .rounds-list { overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
+  .round-row { border:1px solid var(--line); border-radius:10px; padding:11px 13px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .round-info { flex:1; min-width:150px; }
+  .round-when { font-weight:600; color:var(--ink); font-size:14px; }
+  .round-meta { font-size:12px; color:var(--muted); margin-top:2px; }
+  .round-actions { display:flex; gap:6px; flex-wrap:wrap; }
+  .mini-btn { background:transparent; border:1.5px solid var(--brass); color:var(--brass-deep); border-radius:6px; padding:6px 10px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .mini-btn.del { border-color:var(--brand-red); color:var(--brand-red); }
+  .modal-foot { margin-top:16px; padding-top:14px; border-top:1px solid var(--line); }
+  .danger-btn { width:100%; background:var(--brand-red); color:#fff; border:none; border-radius:9px; padding:12px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .ghost-btn { flex:1; background:transparent; border:1.5px solid var(--line); color:var(--ink); border-radius:9px; padding:12px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .confirm-row { display:flex; gap:10px; margin-top:18px; }
+  .confirm-row .danger-btn { flex:1; width:auto; }
+  .rounds-empty { color:var(--muted); font-size:13px; text-align:center; padding:18px; }
   .empty { padding:26px 14px; text-align:center; color:var(--muted); font-size:14px; background:var(--soft); border-radius:8px; border:1px dashed var(--line); }
   .log-row { position:relative; padding:11px 4px 13px; }
   .log-bar-track { position:absolute; left:0; bottom:0; height:3px; width:100%; background:var(--line); border-radius:2px; }
@@ -242,11 +265,39 @@
       <div class="export-group">
         <button class="export-btn" id="exportSummary">↓ Summary CSV</button>
         <button class="export-btn" id="exportJson">↓ JSON</button>
+        <button class="export-btn" id="openStored">▤ Stored data</button>
       </div>
     </div>
     <div id="logArea"></div>
-    <div class="footnote">Counts are stored on this iPad only — no central sync. Export after each round to keep a durable copy and combine with other devices.</div>
+    <div class="footnote">Exports cover the current round (date + shift) only. Use <b>Stored data</b> to export or clear other rounds saved on this iPad.</div>
   </section>
+</div>
+
+<!-- Stored-data modal -->
+<div class="modal-backdrop" id="storedModal" style="display:none">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 class="modal-title">Stored data on this iPad</h2>
+      <button class="modal-x" id="closeStored" aria-label="Close">×</button>
+    </div>
+    <div class="modal-sub" id="storedSummary"></div>
+    <div class="rounds-list" id="roundsList"></div>
+    <div class="modal-foot">
+      <button class="danger-btn" id="resetAll">Reset — clear all data</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm dialog -->
+<div class="modal-backdrop" id="confirmModal" style="display:none">
+  <div class="modal modal-sm">
+    <h2 class="modal-title" id="confirmTitle">Are you sure?</h2>
+    <div class="modal-sub" id="confirmBody"></div>
+    <div class="confirm-row">
+      <button class="ghost-btn" id="confirmNo">Cancel</button>
+      <button class="danger-btn" id="confirmYes">Delete</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1065,6 +1116,25 @@ function currentRoundRecords() {
                 .sort((a,b) => b.id.localeCompare(a.id));
 }
 
+// Every distinct round (date + shift) saved on this device, newest first,
+// with its surveyor(s) and count.
+function allRounds() {
+  const map = {};
+  records.forEach(r => {
+    const key = r.date + "|" + r.shift;
+    if (!map[key]) map[key] = { date:r.date, day:r.day, shift:r.shift, surveyors:new Set(), count:0 };
+    map[key].count++;
+    if (r.surveyor) map[key].surveyors.add(r.surveyor);
+  });
+  return Object.values(map)
+    .map(g => ({ ...g, surveyors:[...g.surveyors].join(", ") }))
+    .sort((a,b) => (b.date+b.shift).localeCompare(a.date+a.shift));
+}
+
+function recordsForRound(date, shift) {
+  return records.filter(r => r.date === date && r.shift === shift);
+}
+
 function fmtTime(id) {
   const ts = parseInt(id.split("-")[0], 10);
   return new Date(ts).toLocaleString(undefined, { hour:"numeric", minute:"2-digit" });
@@ -1107,22 +1177,24 @@ function csvCell(v) {
   return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
 }
 
-function exportSummary() {
-  if (records.length === 0) { flash("Nothing to export yet.", "err"); return; }
+function exportSummary(recs) {
+  recs = recs || currentRoundRecords();
+  if (recs.length === 0) { flash("Nothing to export for this round.", "err"); return; }
   const headers = ["SurveyDate","Day","Shift","Surveyor","Sector","Facility","LotNumber","Street","Category","LotType","Quadrant","Ring","Capacity","CountMode","CountedValue","Occupied","Vacant","PercentOccupied","Notes"];
   const lines = [headers.join(",")];
-  records.forEach(r => {
+  recs.forEach(r => {
     lines.push([r.date,r.day,r.shift,r.surveyor,r.sector,r.facility,r.lotNumber,r.street,r.category,r.lotType,r.quadrant,r.ring,r.capacity,r.countMode,r.countedValue,r.occupied,r.vacant,r.percentOccupied,r.notes].map(csvCell).join(","));
   });
   download(lines.join("\r\n"), "parking_count_summary_"+stamp()+".csv", "text/csv");
-  flash("Exported summary — "+records.length+" rows.");
+  flash("Exported summary — "+recs.length+" rows.");
 }
 
 
-function exportJson() {
-  if (records.length === 0) { flash("Nothing to export yet.", "err"); return; }
+function exportJson(recs) {
+  recs = recs || currentRoundRecords();
+  if (recs.length === 0) { flash("Nothing to export for this round.", "err"); return; }
   const groups = {};
-  records.forEach(r => {
+  recs.forEach(r => {
     const key = r.date+"|"+r.shift+"|"+r.surveyor;
     if (!groups[key]) groups[key] = { session:{ survey_date:r.date, day:r.day, shift:r.shift, surveyor:r.surveyor }, records:[] };
     groups[key].records.push({
@@ -1149,8 +1221,110 @@ function download(text, name, type) {
   URL.revokeObjectURL(url);
 }
 
-document.getElementById("exportSummary").onclick = exportSummary;
-document.getElementById("exportJson").onclick = exportJson;
+// Export buttons default to the current round (wrap so the click event
+// isn't passed in as a record set).
+document.getElementById("exportSummary").onclick = () => exportSummary();
+document.getElementById("exportJson").onclick   = () => exportJson();
+
+// ── STORED DATA + RESET ──────────────────────────────────────────
+const storedModal  = document.getElementById("storedModal");
+const confirmModal = document.getElementById("confirmModal");
+
+function openStored() { renderStored(); storedModal.style.display = "flex"; }
+function closeStored() { storedModal.style.display = "none"; }
+
+function fmtRound(r) {
+  // "Wed Jul 16 2026 · Morning" from the stored date + shift
+  let when = r.date;
+  try {
+    const d = new Date(r.date + "T00:00:00");
+    when = d.toLocaleDateString(undefined, { weekday:"short", month:"short", day:"numeric", year:"numeric" });
+  } catch(e) {}
+  return when + " · " + r.shift;
+}
+
+function renderStored() {
+  const rounds = allRounds();
+  const list = document.getElementById("roundsList");
+  const summary = document.getElementById("storedSummary");
+  summary.textContent = records.length === 0
+    ? "No counts saved on this iPad."
+    : records.length + " count" + (records.length===1?"":"s") + " across " + rounds.length + " round" + (rounds.length===1?"":"s") + ".";
+  list.innerHTML = "";
+  if (rounds.length === 0) {
+    list.innerHTML = '<div class="rounds-empty">Nothing stored yet. Logged counts will appear here.</div>';
+    document.getElementById("resetAll").style.display = "none";
+    return;
+  }
+  document.getElementById("resetAll").style.display = "";
+  rounds.forEach(r => {
+    const row = document.createElement("div");
+    row.className = "round-row";
+    const info = document.createElement("div");
+    info.className = "round-info";
+    info.innerHTML = '<div class="round-when">' + fmtRound(r) + '</div>' +
+      '<div class="round-meta">' + r.count + ' count' + (r.count===1?"":"s") +
+      (r.surveyors ? ' · ' + r.surveyors : '') + '</div>';
+    const actions = document.createElement("div");
+    actions.className = "round-actions";
+    const csv = document.createElement("button");
+    csv.className = "mini-btn"; csv.textContent = "CSV";
+    csv.onclick = () => exportSummary(recordsForRound(r.date, r.shift));
+    const json = document.createElement("button");
+    json.className = "mini-btn"; json.textContent = "JSON";
+    json.onclick = () => exportJson(recordsForRound(r.date, r.shift));
+    const del = document.createElement("button");
+    del.className = "mini-btn del"; del.textContent = "Delete";
+    del.onclick = () => askConfirm(
+      "Delete this round?",
+      "This removes " + r.count + " count" + (r.count===1?"":"s") + " from " + fmtRound(r) +
+      ". Export first if you need a copy — this can't be undone.",
+      "Delete round",
+      () => {
+        records = records.filter(x => !(x.date === r.date && x.shift === r.shift));
+        persist();
+        renderStored(); renderLog(); renderFacList(); renderSectorChips(); renderCountPanel();
+        flash("Round deleted.");
+      });
+    actions.appendChild(csv); actions.appendChild(json); actions.appendChild(del);
+    row.appendChild(info); row.appendChild(actions);
+    list.appendChild(row);
+  });
+}
+
+// Reusable confirm dialog. onYes runs only if the user confirms.
+let _confirmYes = null;
+function askConfirm(title, body, yesLabel, onYes) {
+  document.getElementById("confirmTitle").textContent = title;
+  document.getElementById("confirmBody").textContent  = body;
+  document.getElementById("confirmYes").textContent   = yesLabel || "Delete";
+  _confirmYes = onYes;
+  confirmModal.style.display = "flex";
+}
+function closeConfirm() { confirmModal.style.display = "none"; _confirmYes = null; }
+
+document.getElementById("openStored").onclick  = openStored;
+document.getElementById("closeStored").onclick = closeStored;
+storedModal.onclick = (e) => { if (e.target === storedModal) closeStored(); };
+
+document.getElementById("resetAll").onclick = () => askConfirm(
+  "Clear ALL stored data?",
+  "This permanently deletes every count saved on this iPad across all rounds. Export anything you need first — this cannot be undone.",
+  "Yes, clear everything",
+  () => {
+    records = [];
+    persist();
+    renderStored(); renderLog(); renderFacList(); renderSectorChips(); renderCountPanel();
+    flash("All stored data cleared.");
+  });
+
+document.getElementById("confirmNo").onclick  = closeConfirm;
+confirmModal.onclick = (e) => { if (e.target === confirmModal) closeConfirm(); };
+document.getElementById("confirmYes").onclick = () => {
+  const fn = _confirmYes;
+  closeConfirm();
+  if (fn) fn();
+};
 
 [rDate, rShift, rSurveyor].forEach(el => el.addEventListener("change", () => { renderFacList(); renderLog(); }));
 
