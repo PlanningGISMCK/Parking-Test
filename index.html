@@ -135,6 +135,8 @@
   .log-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px; }
   h2.log-title { font-family:'Fraunces',Georgia,serif; font-size:20px; margin:0; font-weight:600; }
   .export-group { display:flex; gap:8px; }
+  .stop-badge { display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; padding:0 6px; margin-right:8px; background:var(--brand-med); color:#fff; border-radius:6px; font-size:12px; font-weight:700; vertical-align:middle; }
+  .fac-chip.active .stop-badge { background:#fff; color:var(--brand-dark); }
   .export-btn { background:transparent; color:var(--brass-deep); border:1.5px solid var(--brass); border-radius:7px; padding:8px 12px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
 
   /* ── Modals (stored data + confirm) ── */
@@ -212,8 +214,10 @@
       <div class="round-field">
         <label>Shift</label>
         <select id="rShift">
-          <option>Morning</option><option selected>Mid-day</option>
-          <option>Afternoon</option><option>Evening</option>
+          <option value="Morning">Morning (8 AM – 10 AM)</option>
+          <option value="Mid-day">Mid-day (11 AM – 1 PM)</option>
+          <option value="Afternoon">Afternoon (3 PM – 5 PM)</option>
+          <option value="Evening">Evening (6 PM – 8 PM)</option>
         </select>
       </div>
       <div class="round-field">
@@ -317,13 +321,6 @@
 let FACILITIES = [];
 const FAC_BY_LOT = {};
 
-// Garage floors aren't in the data, so they're configured here,
-// keyed by the garage's stable LotNumber.
-const GARAGE_LEVELS = {
-  "Davis Garage":     ["Ground / Level 1","Level 2","Level 3"],
-  "Chestnut Commons": ["Ground / Level 1","Level 2","Level 3","Level 4","Roof"]
-};
-
 function deriveFacilities(fc) {
   const ringCentroid = ring => {
     let x=0, y=0;
@@ -385,7 +382,8 @@ function deriveFacilities(fc) {
       category: cat, lotType: p.LotType || "",
       quadrant: (p.Quadrant || "").trim(), ring: (p.StudyRing || "").trim(),
       capacity: p.Capacity || 0,
-      levels: GARAGE_LEVELS[num] || null,
+      stop: (p.Stop__ != null && p.Stop__ !== "") ? +p.Stop__ : null,
+      levels: null,   // garages are counted as a single total, not by floor
       lat: +c[1].toFixed(6), lng: +c[0].toFixed(6),
       notes: (p.Notes || "").trim()
     });
@@ -874,6 +872,32 @@ function updateDay() {
 rDate.addEventListener("change", updateDay);
 (function initDate(){ rDate.value = new Date().toISOString().slice(0,10); updateDay(); })();
 
+// Default the shift to whichever survey window the current CST time is
+// nearest to. Shift windows: Morning 8-10, Mid-day 11-1, Afternoon 3-5,
+// Evening 6-8. Picks the closest window by its midpoint hour.
+(function initShift(){
+  let hour;
+  try {
+    // Current hour in America/Chicago (CST/CDT), regardless of device zone.
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone:"America/Chicago", hour:"numeric", hour12:false
+    }).formatToParts(new Date());
+    hour = parseInt(parts.find(p => p.type === "hour").value, 10);
+    if (hour === 24) hour = 0;
+  } catch(e) {
+    hour = new Date().getHours();   // fall back to device time
+  }
+  const windows = [
+    { v:"Morning",   mid:9  },   // 8-10
+    { v:"Mid-day",   mid:12 },   // 11-1
+    { v:"Afternoon", mid:16 },   // 3-5
+    { v:"Evening",   mid:19 }    // 6-8
+  ];
+  let best = windows[0], bestDist = 99;
+  windows.forEach(w => { const d = Math.abs(hour - w.mid); if (d < bestDist) { bestDist = d; best = w; } });
+  rShift.value = best.v;
+})();
+
 function roundMeta() {
   return { date:rDate.value, day:rDay.value, shift:rShift.value, surveyor:rSurveyor.value.trim() };
 }
@@ -899,7 +923,14 @@ function renderFacList() {
     (!q || f.name.toLowerCase().includes(q)
         || (f.lotNumber||"").toLowerCase().includes(q)
         || (f.street||"").toLowerCase().includes(q))
-  );
+  ).sort((a,b) => {
+    // Walking order: by Stop__ within the sector. Lots without a stop
+    // number sort to the end, then fall back to name.
+    const sa = a.stop == null ? Infinity : a.stop;
+    const sb = b.stop == null ? Infinity : b.stop;
+    if (sa !== sb) return sa - sb;
+    return a.name.localeCompare(b.name, undefined, { numeric:true });
+  });
   list.innerHTML = "";
   if (matches.length === 0) {
     list.innerHTML = '<div class="empty-list">' +
@@ -910,8 +941,9 @@ function renderFacList() {
     const done = countedInRound(f.id);
     const btn = document.createElement("button");
     btn.className = "fac-chip" + (f.id === selectedId ? " active" : "");
+    const stopBadge = f.stop != null ? '<span class="stop-badge">'+f.stop+'</span>' : '';
     btn.innerHTML =
-      '<span class="fac-main"><span class="fac-name">'+f.name+'</span>' +
+      '<span class="fac-main"><span class="fac-name">'+stopBadge+f.name+'</span>' +
       '<span class="fac-meta">'+f.category+' · '+f.capacity+' spaces'+(f.street?' · '+f.street:'')+'</span></span>' +
       (done ? '<span class="counted-tag">✓ counted</span>' : '<span class="fac-cap">'+f.capacity+'</span>');
     btn.onclick = () => selectFacility(f.id);
@@ -1067,7 +1099,7 @@ function logCount() {
     id: Date.now()+"-"+Math.random().toString(36).slice(2,7),
     date:m.date, day:m.day, shift:m.shift, surveyor:m.surveyor,
     facilityId:f.id, facility:f.name, address:f.address, category:f.category,
-    sector:f.sector, lotNumber:f.lotNumber, street:f.street,
+    sector:f.sector, stop:f.stop, lotNumber:f.lotNumber, street:f.street,
     lotType:f.lotType, quadrant:f.quadrant, ring:f.ring, capacity:f.capacity,
     countMode, countedValue:counted, occupied:d.occupied, vacant:d.vacant,
     percentOccupied:d.pct, byLevel, notes,
@@ -1180,10 +1212,10 @@ function csvCell(v) {
 function exportSummary(recs) {
   recs = recs || currentRoundRecords();
   if (recs.length === 0) { flash("Nothing to export for this round.", "err"); return; }
-  const headers = ["SurveyDate","Day","Shift","Surveyor","Sector","Facility","LotNumber","Street","Category","LotType","Quadrant","Ring","Capacity","CountMode","CountedValue","Occupied","Vacant","PercentOccupied","Notes"];
+  const headers = ["SurveyDate","Day","Shift","Surveyor","Sector","Stop","Facility","LotNumber","Street","Category","LotType","Quadrant","Ring","Capacity","CountMode","CountedValue","Occupied","Vacant","PercentOccupied","Notes"];
   const lines = [headers.join(",")];
   recs.forEach(r => {
-    lines.push([r.date,r.day,r.shift,r.surveyor,r.sector,r.facility,r.lotNumber,r.street,r.category,r.lotType,r.quadrant,r.ring,r.capacity,r.countMode,r.countedValue,r.occupied,r.vacant,r.percentOccupied,r.notes].map(csvCell).join(","));
+    lines.push([r.date,r.day,r.shift,r.surveyor,r.sector,r.stop,r.facility,r.lotNumber,r.street,r.category,r.lotType,r.quadrant,r.ring,r.capacity,r.countMode,r.countedValue,r.occupied,r.vacant,r.percentOccupied,r.notes].map(csvCell).join(","));
   });
   download(lines.join("\r\n"), "parking_count_summary_"+stamp()+".csv", "text/csv");
   flash("Exported summary — "+recs.length+" rows.");
@@ -1198,7 +1230,7 @@ function exportJson(recs) {
     const key = r.date+"|"+r.shift+"|"+r.surveyor;
     if (!groups[key]) groups[key] = { session:{ survey_date:r.date, day:r.day, shift:r.shift, surveyor:r.surveyor }, records:[] };
     groups[key].records.push({
-      facility:r.facility, sector:r.sector, lot_number:r.lotNumber, street:r.street,
+      facility:r.facility, sector:r.sector, stop:r.stop, lot_number:r.lotNumber, street:r.street,
       address:r.address, category:r.category, lot_type:r.lotType,
       quadrant:r.quadrant, ring:r.ring, capacity:r.capacity, count_mode:r.countMode,
       counted_value:r.countedValue, occupied:r.occupied, vacant:r.vacant,
