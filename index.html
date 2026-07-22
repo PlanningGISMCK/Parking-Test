@@ -173,6 +173,11 @@
   .log-pct { font-size:13px; font-weight:700; min-width:38px; text-align:right; }
   .del-btn { background:transparent; border:none; color:var(--muted); font-size:21px; line-height:1; cursor:pointer; padding:0 2px; }
   .footnote { margin-top:14px; padding-top:12px; border-top:1px solid var(--line); font-size:12px; color:var(--muted); }
+  .submit-banner { margin-top:16px; background:var(--soft); border:1px solid var(--brand-med); border-left:5px solid var(--brand-med); border-radius:12px; padding:16px 18px; }
+  .submit-title { font-family:'Fraunces',Georgia,serif; font-size:20px; font-weight:600; color:var(--brand-dark); margin-bottom:7px; }
+  .submit-body { font-size:16px; color:var(--ink); line-height:1.75; }
+  .submit-body a { color:var(--brand-med); font-weight:600; text-decoration:none; }
+  .submit-body a:hover { text-decoration:underline; }
 
   .toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); color:#fff; padding:12px 20px; border-radius:9px; font-size:14px; font-weight:600; box-shadow:0 6px 24px rgba(0,0,0,.25); z-index:1000; max-width:90%; text-align:center; opacity:0; pointer-events:none; transition:opacity .2s ease; }
   .toast.show { opacity:1; }
@@ -275,6 +280,19 @@
     <div id="logArea"></div>
     <div class="footnote">Exports cover the current round (date + shift) only. Use <b>Stored data</b> to export or clear other rounds saved on this iPad.</div>
   </section>
+
+  <div class="submit-banner">
+    <div class="submit-title">After each round, send your exported files</div>
+    <div class="submit-body">
+      Upload the CSV or JSON to the shared parking folder:
+      <a href="https://mckinneyo365.sharepoint.com/:f:/s/Parking_Test/IgBVkwfv47RHTqdlH7mRRyMVAbYHkOHq-oC2TcXdkLypzlk?e=CYeezf" target="_blank" rel="noopener">SharePoint · Parking</a>
+      <br>
+      Or email them to
+      <a href="mailto:Tbrown@mckinneytexas.org">[Torrey Brown — Tbrown@mckinneytexas.org]</a>
+      and
+      <a href="mailto:jbennett@mckinneytexas.org">[Jake Bennet — jbennett@mckinneytexas.org]</a>.
+    </div>
+  </div>
 </div>
 
 <!-- Stored-data modal -->
