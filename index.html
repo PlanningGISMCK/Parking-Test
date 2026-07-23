@@ -1262,7 +1262,12 @@ function exportJson(recs) {
   flash("Exported JSON.");
 }
 
-function stamp() { return new Date().toISOString().slice(0,10); }
+function stamp() {
+  const d = new Date();
+  const p = n => String(n).padStart(2,"0");
+  return d.getFullYear() + "-" + p(d.getMonth()+1) + "-" + p(d.getDate())
+       + "_" + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+}
 function download(text, name, type) {
   const blob = new Blob([text], { type:type+";charset=utf-8;" });
   const url = URL.createObjectURL(blob);
