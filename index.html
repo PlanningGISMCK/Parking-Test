@@ -161,6 +161,9 @@
   .confirm-row { display:flex; gap:10px; margin-top:18px; }
   .confirm-row .danger-btn { flex:1; width:auto; }
   .rounds-empty { color:var(--muted); font-size:13px; text-align:center; padding:18px; }
+  .json-text { width:100%; flex:1; min-height:260px; resize:none; border:1px solid var(--line); border-radius:9px; padding:12px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; line-height:1.5; color:var(--ink); background:var(--soft); white-space:pre; overflow:auto; }
+  .json-foot { display:flex; }
+  .json-foot .ghost-btn { flex:1; }
   .empty { padding:26px 14px; text-align:center; color:var(--muted); font-size:14px; background:var(--soft); border-radius:8px; border:1px dashed var(--line); }
   .log-row { position:relative; padding:11px 4px 13px; }
   .log-bar-track { position:absolute; left:0; bottom:0; height:3px; width:100%; background:var(--line); border-radius:2px; }
@@ -227,7 +230,7 @@
       </div>
       <div class="round-field">
         <label>Surveyor</label>
-        <input type="text" id="rSurveyor" placeholder="e.g. L. Raley" />
+        <input type="text" id="rSurveyor" placeholder="e.g. N. Ataie" />
       </div>
       <div class="round-field">
         <label>Day</label>
@@ -306,6 +309,21 @@
     <div class="rounds-list" id="roundsList"></div>
     <div class="modal-foot">
       <button class="danger-btn" id="resetAll">Reset — clear all data</button>
+    </div>
+  </div>
+</div>
+
+<!-- JSON popup (fallback when downloads aren't available) -->
+<div class="modal-backdrop" id="jsonModal" style="display:none">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 class="modal-title">JSON export</h2>
+      <button class="modal-x" id="jsonClose" aria-label="Close">×</button>
+    </div>
+    <div class="modal-sub" id="jsonSummary"></div>
+    <textarea id="jsonText" class="json-text" readonly spellcheck="false"></textarea>
+    <div class="modal-foot json-foot">
+      <button class="ghost-btn" id="jsonCopyBtn">Copy to clipboard</button>
     </div>
   </div>
 </div>
@@ -1258,10 +1276,25 @@ function exportJson(recs) {
     });
   });
   const out = { export_version:"1.0", generated:new Date().toISOString(), sessions:Object.values(groups) };
-  download(JSON.stringify(out, null, 2), "parking_count_"+stamp()+".json", "application/json");
-  flash("Exported JSON.");
+  showJson(JSON.stringify(out, null, 2), recs.length);
 }
 
+// Show the JSON in a popup with a copy button — a fallback for when the
+// device can't save downloads (locked-down iPads, kiosk mode, etc.).
+function showJson(text, count) {
+  const ta = document.getElementById("jsonText");
+  ta.value = text;
+  document.getElementById("jsonSummary").textContent =
+    count + " count" + (count===1?"":"s") + " · " + (text.length/1024).toFixed(1) + " KB";
+  document.getElementById("jsonCopyBtn").textContent = "Copy to clipboard";
+  document.getElementById("jsonModal").style.display = "flex";
+  // pre-select so a long-press / Cmd-A grabs it immediately
+  setTimeout(() => { ta.focus(); ta.select(); }, 30);
+}
+
+// Filename timestamp: local date + time to the second, e.g. "2026-07-20_143207".
+// Uses local time (not toISOString, which is UTC and would roll the date
+// over on evening shifts) and avoids ":" since it's illegal in filenames.
 function stamp() {
   const d = new Date();
   const p = n => String(n).padStart(2,"0");
@@ -1280,6 +1313,30 @@ function download(text, name, type) {
 // isn't passed in as a record set).
 document.getElementById("exportSummary").onclick = () => exportSummary();
 document.getElementById("exportJson").onclick   = () => exportJson();
+
+// JSON popup: copy + close. Clipboard API can be blocked on non-HTTPS or
+// locked-down browsers, so fall back to selecting the textarea + execCommand.
+(function wireJsonModal(){
+  const modal = document.getElementById("jsonModal");
+  const ta = document.getElementById("jsonText");
+  const copyBtn = document.getElementById("jsonCopyBtn");
+  function close() { modal.style.display = "none"; }
+  document.getElementById("jsonClose").onclick = close;
+  modal.onclick = (e) => { if (e.target === modal) close(); };
+  copyBtn.onclick = async () => {
+    let ok = false;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(ta.value); ok = true;
+      }
+    } catch(e) { ok = false; }
+    if (!ok) {
+      try { ta.focus(); ta.select(); ok = document.execCommand("copy"); } catch(e) { ok = false; }
+    }
+    copyBtn.textContent = ok ? "✓ Copied" : "Select all, then copy manually";
+    if (ok) setTimeout(() => { copyBtn.textContent = "Copy to clipboard"; }, 1800);
+  };
+})();
 
 // ── STORED DATA + RESET ──────────────────────────────────────────
 const storedModal  = document.getElementById("storedModal");
