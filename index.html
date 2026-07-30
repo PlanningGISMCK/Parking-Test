@@ -648,7 +648,7 @@ function buildLotOverlay(fc) {
       const f = FAC_BY_LOT[lotNum];
       const nm = (f && f.name) || p.DisplayName || "Parking";
       const cap = f ? f.capacity : p.Capacity;
-      layer.bindTooltip(nm + (cap!=null ? " \u00b7 " + cap + " spaces" : ""), { sticky:true });
+      layer.bindTooltip(nm + (cap!=null ? " \u00b7 " + cap + " spaces" : ""), { sticky:false, direction:"top" });
       layer.on("click", () => { if (f) selectFacility(f.id); });
     }
   }).addTo(map);
@@ -1022,6 +1022,9 @@ function jumpMapTo(f) {
   } else if (f.lat != null) {
     map.setView([f.lat, f.lng], Math.max(map.getZoom(), 17), { animate:true });
   }
+  // Only one tooltip open at a time: close the previously-opened one before
+  // opening this lot's, so selecting lots in a row doesn't stack them up.
+  if (lotLayer) lotLayer.eachLayer(l => { if (l !== layer && l.closeTooltip) l.closeTooltip(); });
   if (layer && layer.openTooltip) layer.openTooltip();
 }
 
