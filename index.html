@@ -960,8 +960,12 @@ function renderFacList() {
         || (f.lotNumber||"").toLowerCase().includes(q)
         || (f.street||"").toLowerCase().includes(q))
   ).sort((a,b) => {
-    // Walking order: by Stop__ within the sector. Lots without a stop
-    // number sort to the end, then fall back to name.
+    // Counted lots drop to the bottom so what's left to survey stays on top.
+    const da = countedInRound(a.id) ? 1 : 0;
+    const db = countedInRound(b.id) ? 1 : 0;
+    if (da !== db) return da - db;
+    // Within each group: walking order by Stop__, then name. Lots without a
+    // stop number sort to the end of their group.
     const sa = a.stop == null ? Infinity : a.stop;
     const sb = b.stop == null ? Infinity : b.stop;
     if (sa !== sb) return sa - sb;
